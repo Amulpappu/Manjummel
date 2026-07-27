@@ -162,39 +162,66 @@ class YouTube(commands.Cog):
         promo_ch = self.get_promo_channel(message.guild)
         if promo_ch and message.channel.id == promo_ch.id:
             # Check if message contains YouTube link
-            if "youtube.com" in message.content.lower() or "youtu.be" in message.content.lower():
+            urls = re.findall(r'(https?://(?:www\.)?(?:youtube\.com|youtu\.be)/\S+)', message.content)
+            if urls:
+                target_url = urls[0]
                 youtubers = self.data.get("youtubers", [])
                 matched_yt = None
+                video_title = "Live Stream / Video"
 
-                # Match if posted link or author matches registered YouTuber
-                for y in youtubers:
-                    cid = y.get("channel_id", "").lower()
-                    handle = y.get("handle", "").lower().replace("@", "")
-                    if (cid and cid in message.content.lower()) or (handle and handle in message.content.lower()):
-                        matched_yt = y
-                        break
+                # 1. Fetch YouTube oEmbed to get channel author_name & author_url
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                }
+                oembed_api = f"https://www.youtube.com/oembed?url={target_url}&format=json"
 
-                # Also match if author username matches registered YouTuber handle
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(oembed_api, headers=headers, timeout=5) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                author_name = data.get("author_name", "")
+                                author_url = data.get("author_url", "")
+                                video_title = data.get("title", video_title)
+
+                                for y in youtubers:
+                                    y_cid = y.get("channel_id", "").lower()
+                                    y_handle = y.get("handle", "").lower().replace("@", "")
+                                    y_url = y.get("url", "").lower()
+
+                                    if (y_url and y_url in author_url.lower()) or (y_handle and y_handle in author_url.lower()) or (y_cid and y_cid in target_url.lower()):
+                                        matched_yt = y
+                                        break
+                except Exception as e:
+                    print(f"[YouTube oEmbed Error] {e}")
+
+                # 2. Fallback: Match if message author is Server Owner / Admin or matches handle
                 if not matched_yt:
+                    is_admin_or_owner = message.author.id == message.guild.owner_id or message.author.guild_permissions.administrator
                     for y in youtubers:
                         h = y.get("handle", "").lower().replace("@", "")
-                        if h and (h in message.author.name.lower() or h in message.author.display_name.lower()):
+                        n = y.get("name", "").lower()
+                        if h and (h in message.author.name.lower() or h in message.author.display_name.lower() or n in message.author.display_name.lower()):
                             matched_yt = y
                             break
+                    if not matched_yt and is_admin_or_owner and youtubers:
+                        # Default to first registered YouTuber if posted by Server Owner/Admin
+                        matched_yt = youtubers[0]
 
-                # If REGISTERED YouTuber: Tag @family!
+                # 3. If REGISTERED YouTuber or Admin: Tag @family!
                 if matched_yt and matched_yt.get("ping_enabled", True):
                     ping_role = self.get_ping_role(message.guild)
                     role_mention = ping_role.mention if ping_role else "@family"
 
                     embed = discord.Embed(
                         title=f"🔴 {matched_yt.get('name')} is LIVE on YouTube!",
-                        description=f"{role_mention} **{matched_yt.get('name')}** just shared a live stream / video in {promo_ch.mention}!\n\n👉 **Watch Now:** {message.content}",
-                        color=discord.Color.red()
+                        description=f"🎬 **[{video_title}]({target_url})**\n\n{role_mention} **{matched_yt.get('name')}** just shared a live stream in {promo_ch.mention}!\n\n👉 **[Click Here to Watch Stream]({target_url})**",
+                        color=discord.Color.red(),
+                        url=target_url
                     )
                     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
                     embed.set_footer(text="Registered VIP Streamer Alert • Manjummel Bot")
-                    
+
                     await message.channel.send(content=f"🔴 {role_mention} **{matched_yt.get('name')} IS LIVE!**", embed=embed)
                 else:
                     # NOT REGISTERED: Allow link in self-promotion, but NO PING @family!
