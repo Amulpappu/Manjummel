@@ -133,15 +133,20 @@ class YouTube(commands.Cog):
         self.yt_check_loop.cancel()
 
     def get_promo_channels(self, guild: discord.Guild):
-        """Finds all promotion / announcement channels in guild, resolving Unicode small-caps."""
+        """Finds only dedicated self-promotion channels in guild, resolving Unicode small-caps."""
         channels = []
         for channel in guild.text_channels:
             name_clean = normalize_unicode_text(channel.name)
             cat_name = normalize_unicode_text(channel.category.name) if channel.category else ""
 
-            if any(kw in cat_name for kw in ["promotion", "promo"]) or any(kw in name_clean for kw in ["self_promotion", "selfpromotion", "promo", "promotion", "announcement"]):
+            # Exclude birthday, welcome, log, and rules channels completely
+            if any(ex in name_clean or ex in cat_name for ex in ["birthday", "welcome", "log", "rule"]):
+                continue
+
+            if "self_promotion" in name_clean or "selfpromotion" in name_clean or "promo" in name_clean or "promotion" in cat_name:
                 if channel not in channels:
                     channels.append(channel)
+                    break  # Select ONLY 1 primary self-promotion channel per server to prevent duplicates!
 
         return channels
 
