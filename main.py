@@ -33,12 +33,88 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ManjummelBot")
 
-# ── Render HTTP Port Binding Web Server ────────────────────
-app = Flask(__name__)
+from flask import render_template, request, jsonify
+from cogs.youtube import load_youtubers, save_youtubers, resolve_channel_id
+
+# ── Render HTTP Port Binding Web Server & YouTuber Dashboard ──
+app = Flask(__name__, template_folder="templates")
 
 @app.route("/")
 def home():
-    return "<h1>Manjummel Bot is Online 24/7!</h1><p>Status: Active & Operational</p>"
+    return """
+    <div style="font-family: Arial, sans-serif; background: #0b0f19; color: #fff; padding: 3rem; text-align: center;">
+        <h1>Manjummel Bot is Online 24/7! 🤖</h1>
+        <p>Status: Active & Operational</p>
+        <br>
+        <a href="/youtubers" style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+            📻 Open YouTuber Stream Manager Dashboard
+        </a>
+    </div>
+    """
+
+@app.route("/youtubers")
+def youtubers_dashboard():
+    data = load_youtubers()
+    return render_template("youtubers.html", youtubers=data.get("youtubers", []), ping_role=data.get("ping_role", "family"))
+
+@app.route("/api/youtubers/add", methods=["POST"])
+def api_add_youtuber():
+    req_data = request.get_json() or {}
+    handle = req_data.get("handle", "").strip()
+    name = req_data.get("name", "").strip()
+
+    if not handle:
+        return jsonify({"success": False, "message": "Handle or Channel URL is required."})
+
+    data = load_youtubers()
+    # Resolve channel ID asynchronously in loop or sync helper
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    channel_id, full_url = loop.run_until_complete(resolve_channel_id(handle))
+    loop.close()
+
+    if not channel_id:
+        return jsonify({"success": False, "message": f"Could not resolve YouTube Channel ID for {handle}."})
+
+    youtubers = data.get("youtubers", [])
+    for y in youtubers:
+        if y.get("channel_id") == channel_id:
+            return jsonify({"success": False, "message": f"YouTuber {y.get('name')} is already registered!"})
+
+    final_name = name or handle.replace("https://www.youtube.com/", "").replace("https://youtu.be/", "")
+    new_entry = {
+        "handle": handle if handle.startswith("@") else f"@{final_name}",
+        "channel_id": channel_id,
+        "name": final_name,
+        "ping_enabled": True,
+        "url": full_url,
+        "last_video_id": ""
+    }
+    youtubers.append(new_entry)
+    data["youtubers"] = youtubers
+    save_youtubers(data)
+
+    return jsonify({"success": True, "message": f"Added YouTuber {final_name}!", "entry": new_entry})
+
+@app.route("/api/youtubers/delete/<channel_id>", methods=["POST"])
+def api_delete_youtuber(channel_id):
+    data = load_youtubers()
+    youtubers = data.get("youtubers", [])
+    data["youtubers"] = [y for y in youtubers if y.get("channel_id") != channel_id]
+    save_youtubers(data)
+    return jsonify({"success": True, "message": "Deleted YouTuber."})
+
+@app.route("/api/youtubers/toggle_ping/<channel_id>", methods=["POST"])
+def api_toggle_ping(channel_id):
+    data = load_youtubers()
+    youtubers = data.get("youtubers", [])
+    for y in youtubers:
+        if y.get("channel_id") == channel_id:
+            y["ping_enabled"] = not y.get("ping_enabled", True)
+            break
+    data["youtubers"] = youtubers
+    save_youtubers(data)
+    return jsonify({"success": True, "message": "Toggled ping setting."})
 
 def run_web_server():
     port = int(os.environ.get("PORT", 5000))

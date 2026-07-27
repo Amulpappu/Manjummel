@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTuber Stream Manager | Manjummel Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --card-bg: rgba(22, 28, 45, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 2.5rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #ef4444, #6366f1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+        }
+
+        .stat-card h3 {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .panel h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(11, 15, 25, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+
+        .yt-card {
+            background: rgba(11, 15, 25, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.2s;
+        }
+
+        .yt-card:hover {
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .yt-info h4 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .yt-info p {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .badge-ping {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-disabled {
+            background: rgba(156, 163, 175, 0.15);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-toggle:hover {
+            background: rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
+        #alertBox {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border-radius: 10px;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo">
+            <div class="logo-icon">📻</div>
+            <div class="logo-text">
+                <h1>YouTuber Stream Manager</h1>
+                <p>Manjummel Discord Bot • Auto-Ping @family</p>
+            </div>
+        </div>
+        <div>
+            <a href="/" style="color: var(--text-sub); text-decoration: none; font-size: 0.9rem;">← Back to Bot Status</a>
+        </div>
+    </header>
+
+    <div id="alertBox"></div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Registered Streamers</h3>
+            <div class="value" id="totalCount">{{ youtubers|length }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Target Role Tag</h3>
+            <div class="value" style="color: #818cf8;">@{{ ping_role }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Promo Channel</h3>
+            <div class="value" style="font-size: 1.1rem; color: #f472b6;">📻┆ꜱᴇʟꜰ-ᴘʀᴏᴍᴏᴛɪᴏɴ</div>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <!-- Add YouTuber Form -->
+        <div class="panel">
+            <h2>🔴 Register New YouTuber</h2>
+            <form id="addYtForm">
+                <div class="form-group">
+                    <label for="handle">YouTube Handle or Channel Link</label>
+                    <input type="text" id="handle" placeholder="e.g. @AMULPAPPU_001" required>
+                </div>
+                <div class="form-group">
+                    <label for="name">Custom Name (Optional)</label>
+                    <input type="text" id="name" placeholder="e.g. AMULPAPPU 001">
+                </div>
+                <button type="submit" class="btn">
+                    <span>➕ Register YouTuber</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- YouTuber List -->
+        <div class="panel">
+            <h2>📺 Registered Streamers (<span id="countSpan">{{ youtubers|length }}</span>)</h2>
+            <div id="ytList">
+                {% for y in youtubers %}
+                <div class="yt-card" id="card-{{ y.channel_id }}">
+                    <div class="yt-info">
+                        <h4>{{ y.name }} <span style="font-size: 0.85rem; color: var(--text-sub);">({{ y.handle }})</span></h4>
+                        <p>ID: <code>{{ y.channel_id }}</code></p>
+                        {% if y.ping_enabled %}
+                            <span class="badge badge-ping">Pings @{{ ping_role }} Enabled</span>
+                        {% else %}
+                            <span class="badge badge-disabled">Pings Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="actions">
+                        <button class="btn-sm btn-toggle" onclick="togglePing('{{ y.channel_id }}')">Toggle Ping</button>
+                        <button class="btn-sm btn-delete" onclick="deleteYt('{{ y.channel_id }}')">Remove</button>
+                    </div>
+                </div>
+                {% else %}
+                <p style="color: var(--text-sub); text-align: center; padding: 2rem;">No YouTubers registered yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showAlert(msg, isError = false) {
+        const box = document.getElementById("alertBox");
+        box.className = isError ? "alert-error" : "alert-success";
+        box.innerText = msg;
+        box.style.display = "block";
+        setTimeout(() => { box.style.display = "none"; }, 4000);
+    }
+
+    document.getElementById("addYtForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const handle = document.getElementById("handle").value.trim();
+        const name = document.getElementById("name").value.trim();
+
+        if (!handle) return;
+
+        try {
+            const res = await fetch("/api/youtubers/add", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ handle: handle, name: name })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showAlert("✅ YouTuber registered successfully!");
+                setTimeout(() => { location.reload(); }, 1000);
+            } else {
+                showAlert("❌ Error: " + data.message, true);
+            }
+        } catch (err) {
+            showAlert("❌ Failed to register YouTuber: " + err, true);
+        }
+    });
+
+    async function togglePing(channelId) {
+        try {
+            const res = await fetch(`/api/youtubers/toggle_ping/${channelId}`, { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                showAlert("✅ Updated ping settings!");
+                setTimeout(() => { location.reload(); }, 800);
+            }
+        } catch (err) {
+            showAlert("❌ Failed to toggle ping.", true);
+        }
+    }
+
+    async function deleteYt(channelId) {
+        if (!confirm("Are you sure you want to remove this YouTuber?")) return;
+        try {
+            const res = await fetch(`/api/youtubers/delete/${channelId}`, { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                showAlert("🗑️ Removed YouTuber.");
+                document.getElementById(`card-${channelId}`)?.remove();
+            }
+        } catch (err) {
+            showAlert("❌ Failed to remove YouTuber.", true);
+        }
+    }
+</script>
+</body>
+</html>

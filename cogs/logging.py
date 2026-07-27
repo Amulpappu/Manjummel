@@ -103,9 +103,22 @@ class ServerLogging(commands.Cog):
             date_str = created_at.strftime("%d/%m/%Y %H:%M")
             time_ago = format_time_ago(created_at)
 
+            # Auto-assign @family role so member can access text/VC channels
+            family_role = discord.utils.get(member.guild.roles, name="family")
+            if not family_role:
+                for r in member.guild.roles:
+                    if "family" in r.name.lower():
+                        family_role = r
+                        break
+            if family_role:
+                try:
+                    await member.add_roles(family_role, reason="Auto-assigned @family role on join")
+                except Exception as e:
+                    print(f"[Auto-Role Error] Could not assign @family role: {e}")
+
             embed = discord.Embed(
                 description=f"**{member.name}**\n"
-                            f"{member.mention} **joined the server.**\n\n"
+                            f"{member.mention} **joined the server.** (Role: {family_role.mention if family_role else 'None'})\n\n"
                             f"⏱ **Age of account:**\n"
                             f"`{date_str}`\n"
                             f"**{time_ago}**",
