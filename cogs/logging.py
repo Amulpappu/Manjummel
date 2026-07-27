@@ -49,7 +49,7 @@ class ServerLogging(commands.Cog):
         embed.set_footer(text=f"{prefix}{now_str}")
 
     async def get_audit_log_entry(self, guild: discord.Guild, action: discord.AuditLogAction, target_id: int = None):
-        """Fetches the latest audit log entry for a specific action and target user."""
+        """Fetches the latest audit log entry for a specific action and target user/role/channel."""
         try:
             async for entry in guild.audit_logs(limit=5, action=action):
                 if target_id is None or (entry.target and entry.target.id == target_id):
@@ -77,8 +77,8 @@ class ServerLogging(commands.Cog):
         channels_to_create = [
             ("⚡┆JOIN-LOGS", "Audit logs for member joins and account age."),
             ("⚡┆LEAVE-LOGS", "Audit logs for member leaves and kicks."),
-            ("⚡┆ROLE-LOGS", "Audit logs for role assignments and permission updates."),
-            ("⚡┆SERVER-LOGS", "Audit logs for channel creations, role edits, and message deletions."),
+            ("⚡┆ROLE-LOGS", "Audit logs for role assignments, permission edits, and role changes."),
+            ("⚡┆SERVER-LOGS", "Audit logs for channel creations, deletions, and message deletions."),
             ("⚡┆MODERATOR-ONLY", "Audit logs for voice channel activity, mutes, deafens, timeouts, and nickname changes."),
             ("⚡┆INVITE-LOGS", "Audit logs for server invite tracking."),
             ("🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ", "Channel for birthday celebration cards."),
@@ -143,26 +143,26 @@ class ServerLogging(commands.Cog):
                 removed_roles = [r.mention for r in before.roles if r not in after.roles]
 
                 entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_role_update, after.id)
-                mod_info = f"\n**Responsible Moderator:** {entry.user.mention} (`{entry.user.name}`)" if entry and entry.user else ""
+                mod_str = f"\n**Responsible Moderator:** {entry.user.mention} (`{entry.user.name}`)" if entry and entry.user else ""
 
                 if added_roles:
                     embed = discord.Embed(
                         title="🎭 Role Assigned",
                         description=f"**User:** {after.mention} (`{after.id}`)\n"
-                                    f"**Added Role(s):** {', '.join(added_roles)}{mod_info}",
+                                    f"**Added Role(s):** {', '.join(added_roles)}{mod_str}",
                         color=discord.Color.blue()
                     )
-                    self.add_footer(embed)
+                    self.add_footer(embed, author=entry.user if entry else None)
                     await role_channel.send(embed=embed)
 
                 if removed_roles:
                     embed = discord.Embed(
                         title="🎭 Role Removed",
                         description=f"**User:** {after.mention} (`{after.id}`)\n"
-                                    f"**Removed Role(s):** {', '.join(removed_roles)}{mod_info}",
+                                    f"**Removed Role(s):** {', '.join(removed_roles)}{mod_str}",
                         color=discord.Color.orange()
                     )
-                    self.add_footer(embed)
+                    self.add_footer(embed, author=entry.user if entry else None)
                     await role_channel.send(embed=embed)
 
         # Server Nickname Changes (⚡┆MODERATOR-ONLY)
@@ -183,7 +183,7 @@ class ServerLogging(commands.Cog):
                                 f"**Changed By (Moderator):** {mod_str}",
                     color=discord.Color.gold()
                 )
-                self.add_footer(embed)
+                self.add_footer(embed, author=entry.user if (entry and entry.user) else None)
                 await mod_channel.send(embed=embed)
 
         # Timeout Logs (⚡┆MODERATOR-ONLY)
@@ -202,7 +202,7 @@ class ServerLogging(commands.Cog):
                                     f"**Timed Out Until:** <t:{ts}:F> (<t:{ts}:R>)",
                         color=discord.Color.red()
                     )
-                    self.add_footer(embed)
+                    self.add_footer(embed, author=entry.user if entry else None)
                     await mod_channel.send(embed=embed)
                 else:
                     embed = discord.Embed(
@@ -211,7 +211,7 @@ class ServerLogging(commands.Cog):
                                     f"**Responsible Moderator:** {mod_str}",
                         color=discord.Color.green()
                     )
-                    self.add_footer(embed)
+                    self.add_footer(embed, author=entry.user if entry else None)
                     await mod_channel.send(embed=embed)
 
         # Global Name / Username Changes (⚡┆MODERATOR-ONLY)
@@ -228,33 +228,145 @@ class ServerLogging(commands.Cog):
                 self.add_footer(embed)
                 await mod_channel.send(embed=embed)
 
-    # ── 3. Server Logs (⚡┆SERVER-LOGS: Channels, Roles, Messages) ─
+    # ── 3. Role Creation / Update / Deletion Logs (⚡┆ROLE-LOGS) ─
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role: discord.Role):
+        log_ch = self.get_log_channel(role.guild, ["role_logs", "server_logs"])
+        if log_ch:
+            entry = await self.get_audit_log_entry(role.guild, discord.AuditLogAction.role_create, role.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
+            embed = discord.Embed(
+                title="🎭 Role Created",
+                description=f"**Role:** {role.mention} (`{role.name}`)\n"
+                            f"**Created By (Moderator):** {mod_str}\n"
+                            f"**ID:** `{role.id}`",
+                color=discord.Color.green()
+            )
+            self.add_footer(embed, author=entry.user if entry else None)
+            await log_ch.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        log_ch = self.get_log_channel(role.guild, ["role_logs", "server_logs"])
+        if log_ch:
+            entry = await self.get_audit_log_entry(role.guild, discord.AuditLogAction.role_delete, role.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
+            embed = discord.Embed(
+                title="🗑️ Role Deleted",
+                description=f"**Role Name:** `{role.name}`\n"
+                            f"**Deleted By (Moderator):** {mod_str}\n"
+                            f"**ID:** `{role.id}`",
+                color=discord.Color.red()
+            )
+            self.add_footer(embed, author=entry.user if entry else None)
+            await log_ch.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
+        log_ch = self.get_log_channel(after.guild, ["role_logs", "server_logs"])
+        if log_ch and (before.name != after.name or before.color != after.color or before.permissions != after.permissions):
+            entry = await self.get_audit_log_entry(after.guild, discord.AuditLogAction.role_update, after.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
+
+            changes = []
+            if before.name != after.name:
+                changes.append(f"**Name:** `{before.name}` ➔ `{after.name}`")
+            if before.color != after.color:
+                changes.append(f"**Color:** `{before.color}` ➔ `{after.color}`")
+            if before.permissions != after.permissions:
+                changes.append(f"**Permissions Modified**")
+
+            embed = discord.Embed(
+                title="🎭 Role Modified",
+                description=f"**Role:** {after.mention} (`{after.id}`)\n"
+                            f"**Modified By (Moderator):** {mod_str}\n" + "\n".join(changes),
+                color=discord.Color.gold()
+            )
+            self.add_footer(embed, author=entry.user if entry else None)
+            await log_ch.send(embed=embed)
+
+    # ── 4. Channel Creation, Deletion & Permission Logs (⚡┆SERVER-LOGS & ⚡┆ROLE-LOGS) ─
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
         log_ch = self.get_log_channel(channel.guild, ["server_logs"])
         if log_ch:
+            entry = await self.get_audit_log_entry(channel.guild, discord.AuditLogAction.channel_create, channel.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
             embed = discord.Embed(
                 title="📁 Channel Created",
                 description=f"**Channel:** {channel.mention} (`#{channel.name}`)\n"
                             f"**Type:** `{str(channel.type).upper()}`\n"
+                            f"**Created By (Moderator):** {mod_str}\n"
                             f"**ID:** `{channel.id}`",
                 color=discord.Color.green()
             )
-            self.add_footer(embed)
+            self.add_footer(embed, author=entry.user if entry else None)
             await log_ch.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         log_ch = self.get_log_channel(channel.guild, ["server_logs"])
         if log_ch:
+            entry = await self.get_audit_log_entry(channel.guild, discord.AuditLogAction.channel_delete, channel.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
             embed = discord.Embed(
                 title="🗑️ Channel Deleted",
                 description=f"**Channel Name:** `#{channel.name}`\n"
                             f"**Type:** `{str(channel.type).upper()}`\n"
+                            f"**Deleted By (Moderator):** {mod_str}\n"
                             f"**ID:** `{channel.id}`",
                 color=discord.Color.red()
             )
-            self.add_footer(embed)
+            self.add_footer(embed, author=entry.user if entry else None)
+            await log_ch.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
+        guild = after.guild
+        log_ch = self.get_log_channel(guild, ["role_logs", "server_logs"])
+        if not log_ch:
+            return
+
+        # Check Channel Permission Overwrite Modifications
+        if before.overwrites != after.overwrites:
+            entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.channel_overwrite_update, after.id)
+            if not entry:
+                entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.channel_overwrite_create, after.id)
+            if not entry:
+                entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.channel_overwrite_delete, after.id)
+
+            mod_str = f"{entry.user.mention}" if (entry and entry.user) else "@Moderator"
+
+            allowed_perms = []
+            denied_perms = []
+            target_mention = "`Role/User`"
+            target_id = "N/A"
+
+            for target, overwrite in after.overwrites.items():
+                old_overwrite = before.overwrites.get(target)
+                if old_overwrite != overwrite:
+                    target_mention = target.mention
+                    target_id = target.id
+                    for perm, value in overwrite:
+                        old_val = getattr(old_overwrite, perm, None) if old_overwrite else None
+                        if value != old_val:
+                            if value is True:
+                                allowed_perms.append(perm.replace("_", " ").title())
+                            elif value is False:
+                                denied_perms.append(perm.replace("_", " ").title())
+
+            desc = f"{mod_str} **has modified channel permissions for** {target_mention} **in** {after.mention}\n\n"
+            if allowed_perms:
+                desc += f"**Allowed Permissions**\n" + "\n".join([f"✅ `{p}`" for p in allowed_perms]) + "\n\n"
+            if denied_perms:
+                desc += f"**Denied Permissions**\n" + "\n".join([f"❌ `{p}`" for p in denied_perms]) + "\n\n"
+            desc += f"**IDs**\n`{after.mention}` (`{after.id}`)\n`{target_mention}` (`{target_id}`)\n`{mod_str}` (`{getattr(entry.user, 'id', 'N/A') if entry else 'N/A'}`)"
+
+            embed = discord.Embed(
+                description=desc,
+                color=discord.Color.gold()
+            )
+            self.add_footer(embed, author=entry.user if entry else None)
             await log_ch.send(embed=embed)
 
     @commands.Cog.listener()
@@ -272,7 +384,7 @@ class ServerLogging(commands.Cog):
             self.add_footer(embed, author=message.author)
             await log_ch.send(embed=embed)
 
-    # ── 4. Moderator Logs (⚡┆MODERATOR-ONLY: VC Join, Leave, Mute, Deafen, Disconnect) ──
+    # ── 5. Moderator Logs (⚡┆MODERATOR-ONLY: VC Join, Leave, Mute, Deafen, Disconnect) ──
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         guild = member.guild
@@ -293,7 +405,7 @@ class ServerLogging(commands.Cog):
                             f"**Responsible Moderator:** {mod_str}",
                 color=discord.Color.red() if after.mute else discord.Color.green()
             )
-            self.add_footer(embed)
+            self.add_footer(embed, author=entry.user if entry else None)
             await mod_ch.send(embed=embed)
 
         # Server Deafen Updates
@@ -309,7 +421,7 @@ class ServerLogging(commands.Cog):
                             f"**Responsible Moderator:** {mod_str}",
                 color=discord.Color.red() if after.deaf else discord.Color.green()
             )
-            self.add_footer(embed)
+            self.add_footer(embed, author=entry.user if entry else None)
             await mod_ch.send(embed=embed)
 
         # Joined VC
@@ -333,13 +445,14 @@ class ServerLogging(commands.Cog):
                                 f"**Disconnected By (Moderator):** {entry.user.mention} (`{entry.user.name}`)",
                     color=discord.Color.dark_red()
                 )
+                self.add_footer(embed, author=entry.user)
             else:
                 embed = discord.Embed(
                     description=f"**{member.name}**\n"
                                 f"🔇 **left voice channel** `{before.channel.name}`",
                     color=discord.Color.red()
                 )
-            self.add_footer(embed)
+                self.add_footer(embed)
             await mod_ch.send(embed=embed)
 
         # Moved VC
