@@ -85,13 +85,20 @@ class YouTube(commands.Cog):
         self.yt_check_loop.cancel()
 
     def get_promo_channels(self, guild: discord.Guild):
-        """Finds all promotion / announcement channels in guild."""
+        """Finds all promotion / announcement channels in guild, especially under promotion categories."""
         channels = []
         for channel in guild.text_channels:
             name_clean = channel.name.lower().replace("📻┆", "").replace("📢┆", "").replace("📌┆", "").replace("⚡┆", "").replace("-", "_")
-            if any(kw in name_clean for kw in ["self_promotion", "selfpromotion", "promo", "promotion", "announcement"]):
+            cat_name = channel.category.name.lower() if channel.category else ""
+
+            # Match channels under Category (e.g. ⌬━━━━━━｜📢ᴘʀᴏᴍᴏᴛɪᴏɴ｜𒌇) or by channel name
+            if "promotion" in cat_name or "promo" in cat_name or "ᴘʀᴏᴍᴏᴛɪᴏɴ" in cat_name:
                 if channel not in channels:
                     channels.append(channel)
+            elif any(kw in name_clean for kw in ["self_promotion", "selfpromotion", "promo", "promotion", "announcement"]):
+                if channel not in channels:
+                    channels.append(channel)
+
         return channels
 
     def get_ping_role(self, guild: discord.Guild):
