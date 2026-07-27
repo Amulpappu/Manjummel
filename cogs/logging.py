@@ -87,7 +87,6 @@ class ServerLogging(commands.Cog):
             ("⚡┆SERVER-LOGS", "Audit logs for channel creations, deletions, and message deletions."),
             ("⚡┆MODERATOR-LOGS", "Audit logs for voice channel activity, mutes, deafens, timeouts, and nickname changes."),
             ("⚡┆INVITE-LOGS", "Audit logs for server invite tracking."),
-            ("🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ", "Channel for birthday celebration cards."),
             ("🙏┆ᴡᴇʟᴄᴏᴍᴇ", "Channel for welcoming new members."),
         ]
 

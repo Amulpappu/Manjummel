@@ -138,7 +138,6 @@ bot = commands.Bot(
 
 INITIAL_COGS = [
     "cogs.general",
-    "cogs.birthday",
     "cogs.youtube",
     "cogs.music",
     "cogs.invite_tracker",
