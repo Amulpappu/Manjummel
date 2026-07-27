@@ -208,14 +208,8 @@ class YouTube(commands.Cog):
                         # Default to first registered YouTuber if posted by Server Owner/Admin
                         matched_yt = youtubers[0]
 
-                # 3. If REGISTERED YouTuber or Admin: Delete user message & post official bot live alert!
+                # 3. If REGISTERED YouTuber or Admin: Post @family ping announcement (Do NOT delete raw message)
                 if matched_yt and matched_yt.get("ping_enabled", True):
-                    # Delete the user's raw message so only the bot announcement remains
-                    try:
-                        await message.delete()
-                    except Exception as e:
-                        print(f"[Self-Promo] Could not delete user message: {e}")
-
                     ping_role = self.get_ping_role(message.guild)
                     role_mention = ping_role.mention if ping_role else "@family"
                     streamer_name = matched_yt.get('name', 'AMULPAPPU 001')
@@ -237,7 +231,7 @@ class YouTube(commands.Cog):
 
                     await message.channel.send(content=content_text, embed=embed)
                 else:
-                    # NOT REGISTERED: Allow link in self-promotion, but NO PING @family!
+                    # UNREGISTERED USER: Allow raw link in self-promotion, NO DELETE, NO PING @family!
                     print(f"[Self-Promo] Unregistered live link posted by {message.author.display_name} - No @family ping.")
 
     # ── Automated RSS Stream Check Loop ────────────────────────
@@ -283,18 +277,24 @@ class YouTube(commands.Cog):
                                 if promo_ch:
                                     ping_role = self.get_ping_role(guild)
                                     role_str = ping_role.mention if (ping_role and y.get("ping_enabled", True)) else "@family"
+                                    streamer_name = y.get('name', 'AMULPAPPU 001')
+
+                                    content_text = (
+                                        f"🔴 {role_str} **{streamer_name} IS LIVE!**\n"
+                                        f"🎬 **[{title}]({link})**\n"
+                                        f"👉 **[Click Here to Watch Stream]({link})**"
+                                    )
 
                                     embed = discord.Embed(
-                                        title=f"🎬 {title}",
-                                        description=f"🔴 **{y.get('name')}** is NOW LIVE or uploaded a new video!\n\n👉 **[Watch on YouTube]({link})**",
+                                        title=f"🔴 {streamer_name} IS LIVE!",
+                                        description=f"🎬 **[{title}]({link})**\n\n👉 **[Click Here to Watch Stream]({link})**",
                                         color=discord.Color.red(),
                                         url=link
                                     )
                                     embed.set_image(url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg")
-                                    embed.set_footer(text="Manjummel YouTube Alert")
+                                    embed.set_footer(text="Manjummel Automated YouTube Live Alert")
 
-                                    msg_text = f"🔴 {role_str} **{y.get('name')}** IS NOW LIVE!" if y.get("ping_enabled", True) else f"📹 **{y.get('name')}** posted a video!"
-                                    await promo_ch.send(content=msg_text, embed=embed)
+                                    await promo_ch.send(content=content_text, embed=embed)
                 except Exception as e:
                     print(f"[YouTube Loop Error] Channel {ch_id}: {e}")
 
