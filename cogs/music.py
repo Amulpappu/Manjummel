@@ -89,7 +89,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['ios', 'android']
+            'player_client': ['mweb', 'android', 'web']
         }
     }
 }
@@ -141,7 +141,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     'source_address': '0.0.0.0',
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['ios', 'android']
+                            'player_client': ['mweb', 'android', 'web']
                         }
                     }
                 }
