@@ -112,19 +112,37 @@ class ServerLogging(commands.Cog):
                     )
                     await role_channel.send(embed=embed)
 
-        # Nickname / Name Changes (🛡️┆moderator-logs)
+        # Server Nickname Changes (🛡️┆moderator-logs)
         if before.nick != after.nick:
             mod_channel = self.get_log_channel(before.guild, ["moderator-logs", "mod-logs", "mod_logs"])
             if mod_channel:
+                old_nick = before.nick if before.nick else "None (No Nickname)"
+                new_nick = after.nick if after.nick else "None (Reset to Username)"
                 embed = discord.Embed(
-                    title="✏️ Nickname Changed",
+                    title="✏️ Server Nickname Changed",
                     description=f"**User:** {after.mention} (`{after.id}`)\n"
-                                f"**Before:** `{before.nick or before.name}`\n"
-                                f"**After:** `{after.nick or after.name}`",
+                                f"**Discord Username:** `{after.name}`\n"
+                                f"**Before Nickname:** `{old_nick}`\n"
+                                f"**After Nickname:** `{new_nick}`",
                     color=discord.Color.gold(),
                     timestamp=datetime.datetime.utcnow()
                 )
                 await mod_channel.send(embed=embed)
+
+        # Global Name / Username Changes (🛡️┆moderator-logs)
+        if before.name != after.name or before.global_name != after.global_name:
+            mod_channel = self.get_log_channel(before.guild, ["moderator-logs", "mod-logs", "mod_logs"])
+            if mod_channel:
+                embed = discord.Embed(
+                    title="👤 User Profile Name Changed",
+                    description=f"**User:** {after.mention} (`{after.id}`)\n"
+                                f"**Before Username:** `{before.name}` ({before.global_name or 'None'})\n"
+                                f"**After Username:** `{after.name}` ({after.global_name or 'None'})",
+                    color=discord.Color.purple(),
+                    timestamp=datetime.datetime.utcnow()
+                )
+                await mod_channel.send(embed=embed)
+
 
     # ── 3. Server Logs (⚙️┆server-logs: Channels, Roles, Messages)
     @commands.Cog.listener()
