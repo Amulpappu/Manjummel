@@ -37,6 +37,23 @@ def save_youtubers(data):
     with open(YOUTUBERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
+async def get_latest_video_id(channel_id: str) -> str:
+    """Fetches current latest video ID from YouTube RSS feed to lock past streams on registration."""
+    rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(rss_url, timeout=5) as resp:
+                if resp.status == 200:
+                    xml_data = await resp.text()
+                    root = ET.fromstring(xml_data)
+                    ns = {"atom": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015"}
+                    entries = root.findall("atom:entry", ns)
+                    if entries:
+                        return entries[0].find("yt:videoId", ns).text
+    except Exception:
+        pass
+    return ""
+
 async def resolve_channel_id(handle_or_url: str):
     """Resolves a YouTube handle, URL, or ID into a valid YouTube Channel ID."""
     clean = handle_or_url.strip()
@@ -183,13 +200,14 @@ class YouTube(commands.Cog):
                     return await ctx.send(f"⚠️ YouTuber **{y.get('name')}** (`{channel_id}`) is already registered!")
 
             name = custom_name or handle_or_url.replace("https://www.youtube.com/", "").replace("https://youtu.be/", "")
+            last_vid = await get_latest_video_id(channel_id)
             new_entry = {
                 "handle": handle_or_url if handle_or_url.startswith("@") else f"@{name}",
                 "channel_id": channel_id,
                 "name": name,
                 "ping_enabled": True,
                 "url": full_url,
-                "last_video_id": ""
+                "last_video_id": last_vid
             }
             youtubers.append(new_entry)
             self.data["youtubers"] = youtubers

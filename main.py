@@ -82,13 +82,15 @@ def api_add_youtuber():
             return jsonify({"success": False, "message": f"YouTuber {y.get('name')} is already registered!"})
 
     final_name = name or handle.replace("https://www.youtube.com/", "").replace("https://youtu.be/", "")
+    from cogs.youtube import get_latest_video_id
+    last_vid = loop.run_until_complete(get_latest_video_id(channel_id))
     new_entry = {
         "handle": handle if handle.startswith("@") else f"@{final_name}",
         "channel_id": channel_id,
         "name": final_name,
         "ping_enabled": True,
         "url": full_url,
-        "last_video_id": ""
+        "last_video_id": last_vid
     }
     youtubers.append(new_entry)
     data["youtubers"] = youtubers
