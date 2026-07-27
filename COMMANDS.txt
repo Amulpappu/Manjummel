@@ -1,0 +1,61 @@
+================================================================================
+                    RAJAN BOT - COMMAND REFERENCE GUIDE
+================================================================================
+
+Default Prefix: !
+
+--------------------------------------------------------------------------------
+1. GENERAL & SERVER UTILITY
+--------------------------------------------------------------------------------
+!ping                       - Checks bot response latency in milliseconds.
+!botinfo                    - Displays bot uptime, server count, and version info.
+!addrole @user <RoleName>   - Assigns a role to a server member (Requires Manage Roles).
+!removerole @user <RoleName>- Removes a role from a server member (Requires Manage Roles).
+
+--------------------------------------------------------------------------------
+2. MUSIC PLAYER (Flavia Style with Interactive Buttons)
+--------------------------------------------------------------------------------
+!play <query / URL>         - Searches YouTube or plays the given URL.
+!pause                      - Pauses current music playback.
+!resume                     - Resumes paused music playback.
+!skip                       - Skips the currently playing track.
+!stop                       - Stops music playback and clears the queue.
+!shuffle                    - Shuffles the current music queue.
+!queue                      - Displays the current song queue.
+!leave                      - Disconnects bot from the voice channel.
+
+--------------------------------------------------------------------------------
+3. INVITE TRACKER (Invite Tracker Style)
+--------------------------------------------------------------------------------
+!invites [@user]            - Shows real, total, and left invite stats for a user.
+!invitesleaderboard         - Displays top server inviters leaderboard.
+
+--------------------------------------------------------------------------------
+4. MODERATION & SERVER ANALYTICS (ProBot / Carl-bot / StatBot Style)
+--------------------------------------------------------------------------------
+!warn @user <reason>        - Warns a member and records warning in database.
+!warns [@user]              - Checks warning history for a user.
+!clearwarns @user           - Clears all recorded warnings for a user.
+!kick @user <reason>        - Kicks a member from the server.
+!ban @user <reason>         - Bans a member from the server.
+!purge <amount>             - Bulk deletes specified number of messages.
+!serverinfo                 - Displays rich server statistics, member counts & roles.
+!userinfo [@user]           - Displays account age, joined date, roles & user ID.
+
+--------------------------------------------------------------------------------
+5. BIRTHDAY ANNOUNCEMENTS (WishWave Style)
+--------------------------------------------------------------------------------
+!setbirthday MM-DD          - Sets your birthday (e.g. !setbirthday 07-25).
+!setbirthdaymsg <message>   - Saves a personal custom birthday wish note.
+!setbirthdayrole @Role      - Sets role automatically assigned on member's birthday.
+!listbirthdays              - Lists all registered server birthdays.
+
+--------------------------------------------------------------------------------
+6. YOUTUBE LIVE & VIDEO ALERTS
+--------------------------------------------------------------------------------
+!addyt <Channel_ID>         - Adds a YouTube Channel ID (starts with UC...) to track.
+!setytrole @Role            - Sets specific role pinged when a stream/video goes live.
+
+================================================================================
+                              END OF GUIDE
+================================================================================
