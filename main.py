@@ -101,7 +101,7 @@ def api_delete_youtuber(channel_id):
 def welcome_dashboard():
     from cogs.welcome import load_welcome_config
     config_data = load_welcome_config()
-    return render_template("welcome.html", config=config_data)
+    return render_template("welcome.html", welcome_config=config_data)
 
 @app.route("/api/welcome/update", methods=["POST"])
 def api_update_welcome():

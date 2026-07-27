@@ -415,52 +415,52 @@
             <form id="welcomeForm">
                 <div class="form-group">
                     <label><i class="fa-solid fa-server"></i> Server Name</label>
-                    <input type="text" class="form-control" id="server_name" value="{{ config.server_name }}">
+                    <input type="text" class="form-control" id="server_name" value="{{ welcome_config.get('server_name', 'Manjummel Boys') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-heart"></i> Line 2 Welcome Subtext</label>
-                    <input type="text" class="form-control" id="line2" value="{{ config.line2 }}">
+                    <input type="text" class="form-control" id="line2" value="{{ welcome_config.get('line2', 'Have A Great Time here ❤️') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-book"></i> Rules Channel Mention / Link</label>
-                    <input type="text" class="form-control" id="rules_channel" value="{{ config.rules_channel }}">
+                    <input type="text" class="form-control" id="rules_channel" value="{{ welcome_config.get('rules_channel', '#📖┆DISCORD-RULES') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-font"></i> Welcome Card Title</label>
-                    <input type="text" class="form-control" id="welcome_title" value="{{ config.welcome_title }}">
+                    <input type="text" class="form-control" id="welcome_title" value="{{ welcome_config.get('welcome_title', 'WELCOME') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-comment"></i> Welcome Card Subtitle (Bottom Line)</label>
-                    <input type="text" class="form-control" id="welcome_subtitle" value="{{ config.welcome_subtitle }}">
+                    <input type="text" class="form-control" id="welcome_subtitle" value="{{ welcome_config.get('welcome_subtitle', 'HI GUYS') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-hashtag"></i> Target Welcome Channel Name</label>
-                    <input type="text" class="form-control" id="channel_name" value="{{ config.channel_name }}">
+                    <input type="text" class="form-control" id="channel_name" value="{{ welcome_config.get('channel_name', 'welcome') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-user-tag"></i> Auto-Assign Role Name</label>
-                    <input type="text" class="form-control" id="auto_role" value="{{ config.auto_role }}">
+                    <input type="text" class="form-control" id="auto_role" value="{{ welcome_config.get('auto_role', 'family') }}">
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-palette"></i> Card Custom Colors</label>
                     <div class="color-pickers">
                         <div class="color-picker-item">
-                            <input type="color" id="bg_color" value="{{ config.bg_color }}">
+                            <input type="color" id="bg_color" value="{{ welcome_config.get('bg_color', '#0f172a') }}">
                             <span style="font-size: 0.8rem; color: #fff;">Background</span>
                         </div>
                         <div class="color-picker-item">
-                            <input type="color" id="title_color" value="{{ config.title_color }}">
+                            <input type="color" id="title_color" value="{{ welcome_config.get('title_color', '#00e678') }}">
                             <span style="font-size: 0.8rem; color: #fff;">Title</span>
                         </div>
                         <div class="color-picker-item">
-                            <input type="color" id="name_color" value="{{ config.name_color }}">
+                            <input type="color" id="name_color" value="{{ welcome_config.get('name_color', '#ff2d55') }}">
                             <span style="font-size: 0.8rem; color: #fff;">Name</span>
                         </div>
                     </div>
