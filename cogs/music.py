@@ -64,12 +64,11 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'auto',
+    'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'web'],
-            'skip': ['js']
+            'player_client': ['mweb', 'android']
         }
     }
 }
@@ -97,29 +96,44 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=True, requester=None):
         loop = loop or asyncio.get_event_loop()
+        data = None
+
+        # Try direct extraction first
         try:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        except Exception:
-            # Fallback with fresh YoutubeDL instance
-            fallback_opts = {
-                'format': 'bestaudio/best',
-                'quiet': True,
-                'no_warnings': True,
-                'default_search': 'ytsearch',
-                'source_address': '0.0.0.0',
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android', 'web'],
-                        'skip': ['js']
+            target_url = url if (url.startswith("ytsearch:") or "youtube.com" in url or "youtu.be" in url) else f"ytsearch:{url}"
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
+        except Exception as e:
+            print(f"[YTDL Direct Error] {e}. Trying search fallback...")
+
+        # Datacenter IP bypass fallback search
+        if not data:
+            try:
+                search_query = url
+                if "youtube.com/watch" in url and "v=" in url:
+                    video_id = url.split("v=")[-1].split("&")[0]
+                    search_query = f"ytsearch:{video_id}"
+                elif not search_query.startswith("ytsearch:"):
+                    search_query = f"ytsearch:{url}"
+
+                fallback_opts = {
+                    'format': 'bestaudio/best',
+                    'quiet': True,
+                    'no_warnings': True,
+                    'default_search': 'ytsearch',
+                    'source_address': '0.0.0.0',
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['mweb', 'android']
+                        }
                     }
                 }
-            }
-
-            fallback_ytdl = yt_dlp.YoutubeDL(fallback_opts)
-            data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(url, download=not stream))
+                fallback_ytdl = yt_dlp.YoutubeDL(fallback_opts)
+                data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(search_query, download=not stream))
+            except Exception as ex:
+                print(f"[YTDL Fallback Error] {ex}")
 
         if not data:
-            raise Exception("Could not extract video data from YouTube.")
+            raise Exception("Could not extract video stream from YouTube.")
 
         if 'entries' in data and data['entries']:
             data = data['entries'][0]
@@ -129,6 +143,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             filename = ytdl.prepare_filename(data)
 
         return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data, requester=requester)
+
 
 
 class MusicControlView(discord.ui.View):
