@@ -73,6 +73,41 @@ async def resolve_channel_id(handle_or_url: str):
             print(f"[YouTube Resolve Error] {e}")
     return None, url
 
+async def is_video_actively_live(video_id: str, channel_handle: str = "") -> bool:
+    """Verifies if a YouTube video is currently LIVE in real-time."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+
+    # 1. Check channel /live endpoint first if handle is available
+    if channel_handle:
+        handle_clean = channel_handle if channel_handle.startswith("@") else f"@{channel_handle}"
+        live_url = f"https://www.youtube.com/{handle_clean}/live"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(live_url, headers=headers, allow_redirects=True, timeout=8) as resp:
+                    final_url = str(resp.url)
+                    if "watch?v=" in final_url:
+                        live_vid = final_url.split("watch?v=")[-1].split("&")[0]
+                        if live_vid == video_id:
+                            return True
+        except Exception:
+            pass
+
+    # 2. Check video watch page for live status flags
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(video_url, headers=headers, timeout=8) as resp:
+                if resp.status == 200:
+                    html = await resp.text()
+                    if '"isLive":true' in html or '"status":"LIVE"' in html or '"style":"LIVE"' in html:
+                        return True
+    except Exception as e:
+        print(f"[Live Check Error] {e}")
+
+    return False
+
 def normalize_unicode_text(text: str) -> str:
     """Normalizes Unicode small-caps and styled fonts to standard ASCII lowercase."""
     small_caps_map = {
@@ -278,7 +313,14 @@ class YouTube(commands.Cog):
 
                         last_id = y.get("last_video_id", "")
                         if video_id and video_id != last_id:
-                            # Update last_video_id in memory and disk
+                            # Verify if the video is ACTUALLY CURRENTLY LIVE in real-time
+                            is_live = await is_video_actively_live(video_id, y.get("handle", ""))
+                            if not is_live:
+                                # Skip old uploaded video or ended stream without sending notification
+                                y["last_video_id"] = video_id
+                                save_youtubers(self.data)
+                                continue
+
                             y["last_video_id"] = video_id
                             save_youtubers(self.data)
 
