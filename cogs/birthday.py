@@ -5,6 +5,19 @@ import os
 import datetime
 import config
 
+def normalize_unicode_text(text: str) -> str:
+    """Normalizes Unicode small-caps and styled fonts to standard ASCII lowercase."""
+    small_caps_map = {
+        'ꜱ': 's', 'ᴇ': 'e', 'ʟ': 'l', 'ꜰ': 'f', 'ᴘ': 'p', 'ʀ': 'r', 
+        'ᴏ': 'o', 'ᴍ': 'm', 'ᴛ': 't', 'ɪ': 'i', 'ɴ': 'n', 'ᴀ': 'a',
+        'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ɢ': 'g', 'ʜ': 'h', 'ᴊ': 'j',
+        'ᴋ': 'k', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z'
+    }
+    res = ""
+    for char in text.lower():
+        res += small_caps_map.get(char, char)
+    return res.replace("-", "_").replace(" ", "_")
+
 class Birthday(commands.Cog):
     """WishWave-style Birthday Bot with Wish Cards & Birthday Star Roles."""
 
@@ -44,6 +57,24 @@ class Birthday(commands.Cog):
         file_path = os.path.join(config.DATA_DIR, "birthday_config.json")
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.bday_config, f, indent=4)
+
+    def get_birthday_channel(self, guild: discord.Guild):
+        """Finds channel 🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ or Birthday category channel."""
+        for channel in guild.text_channels:
+            name_clean = normalize_unicode_text(channel.name)
+            cat_name = normalize_unicode_text(channel.category.name) if channel.category else ""
+            if "birthday" in name_clean or "birthday" in cat_name:
+                return channel
+        return guild.system_channel
+
+    def get_ping_role(self, guild: discord.Guild):
+        """Finds @family role in guild."""
+        role = discord.utils.get(guild.roles, name="family")
+        if not role:
+            for r in guild.roles:
+                if "family" in r.name.lower():
+                    return r
+        return role
 
     @commands.command(name="setbirthday")
     async def set_birthday(self, ctx, date_str: str):
@@ -95,6 +126,29 @@ class Birthday(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.command(name="testbirthday")
+    @commands.has_permissions(administrator=True)
+    async def test_birthday(self, ctx, member: discord.Member = None):
+        """Tests sending a birthday celebration card to 🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ tagging @family."""
+        target = member or ctx.author
+        channel = self.get_birthday_channel(ctx.guild)
+        role = self.get_ping_role(ctx.guild)
+        role_str = role.mention if role else "@family"
+
+        embed = discord.Embed(
+            title="🎉 HAPPY BIRTHDAY! 🎂🎈",
+            description=f"Today we celebrate **{target.mention}**'s special day!\n\n💬 *\"Wishing you a joyful day filled with happiness and laughter! ✨\"*",
+            color=discord.Color.gold()
+        )
+        embed.set_thumbnail(url=target.display_avatar.url)
+        embed.set_footer(text="Manjummel Birthday Celebration")
+        
+        if channel:
+            await channel.send(content=f"🥳 {role_str} Let's wish **{target.mention}** a Happy Birthday! 🎂🎁✨", embed=embed)
+            await ctx.send(f"✅ Sent test birthday wish for {target.mention} to {channel.mention}!")
+        else:
+            await ctx.send("❌ Could not find birthday announcement channel.")
+
     @tasks.loop(hours=24)
     async def birthday_check_loop(self):
         """WishWave daily background check posting celebration Wish Cards & assigning Birthday Star role."""
@@ -116,8 +170,10 @@ class Birthday(commands.Cog):
                                 except Exception:
                                     pass
 
-                        ch_id = config.ANNOUNCEMENT_CHANNEL_ID or config.WELCOME_CHANNEL_ID
-                        channel = guild.get_channel(ch_id) if ch_id else guild.system_channel
+                        channel = self.get_birthday_channel(guild)
+                        ping_role = self.get_ping_role(guild)
+                        role_str = ping_role.mention if ping_role else "@family"
+
                         if channel:
                             custom_note = info.get("custom_msg", "Wishing you a joyful day filled with happiness and laughter! ✨")
                             
@@ -127,8 +183,8 @@ class Birthday(commands.Cog):
                                 color=discord.Color.gold()
                             )
                             embed.set_thumbnail(url=member.display_avatar.url)
-                            embed.set_footer(text="WishWave Birthday Celebration")
-                            await channel.send(content=f"🥳 @everyone Let's wish **{member.display_name}** a Happy Birthday! 🎁✨", embed=embed)
+                            embed.set_footer(text="Manjummel Birthday Celebration")
+                            await channel.send(content=f"🥳 {role_str} Let's wish **{member.mention}** a Happy Birthday! 🎂🎁✨", embed=embed)
 
     @birthday_check_loop.before_loop
     async def before_birthday_loop(self):
