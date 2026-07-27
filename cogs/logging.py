@@ -36,6 +36,10 @@ class ServerLogging(commands.Cog):
         """Helper to find a log channel by name (fuzzy match across formatted names)."""
         for channel in guild.text_channels:
             name_clean = channel.name.lower().replace("⚡┆", "").replace("📋┆", "").replace("🎭┆", "").replace("⚙️┆", "").replace("🛡️┆", "").replace("-", "_")
+            # Explicitly exclude staff text channel #moderator-only from receiving log spam
+            if "moderator_only" in name_clean or "mod_only" in name_clean:
+                continue
+
             for target in target_names:
                 t_clean = target.lower().replace("-", "_")
                 if t_clean in name_clean or name_clean in t_clean:
@@ -79,7 +83,7 @@ class ServerLogging(commands.Cog):
             ("⚡┆LEAVE-LOGS", "Audit logs for member leaves and kicks."),
             ("⚡┆ROLE-LOGS", "Audit logs for role assignments, permission edits, and role changes."),
             ("⚡┆SERVER-LOGS", "Audit logs for channel creations, deletions, and message deletions."),
-            ("⚡┆MODERATOR-ONLY", "Audit logs for voice channel activity, mutes, deafens, timeouts, and nickname changes."),
+            ("⚡┆MODERATOR-LOGS", "Audit logs for voice channel activity, mutes, deafens, timeouts, and nickname changes."),
             ("⚡┆INVITE-LOGS", "Audit logs for server invite tracking."),
             ("🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ", "Channel for birthday celebration cards."),
             ("🙏┆ᴡᴇʟᴄᴏᴍᴇ", "Channel for welcoming new members."),
@@ -178,9 +182,9 @@ class ServerLogging(commands.Cog):
                     self.add_footer(embed, author=entry.user if entry else None)
                     await role_channel.send(embed=embed)
 
-        # Server Nickname Changes (⚡┆MODERATOR-ONLY)
+        # Server Nickname Changes (⚡┆MODERATOR-LOGS)
         if before.nick != after.nick:
-            mod_channel = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
+            mod_channel = self.get_log_channel(guild, ["moderator_logs", "mod_logs", "server_logs"])
             if mod_channel:
                 old_nick = before.nick if before.nick else "None (No Nickname)"
                 new_nick = after.nick if after.nick else "None (Reset to Username)"
@@ -199,9 +203,9 @@ class ServerLogging(commands.Cog):
                 self.add_footer(embed, author=entry.user if (entry and entry.user) else None)
                 await mod_channel.send(embed=embed)
 
-        # Timeout Logs (⚡┆MODERATOR-ONLY)
+        # Timeout Logs (⚡┆MODERATOR-LOGS)
         if before.timed_out_until != after.timed_out_until:
-            mod_channel = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
+            mod_channel = self.get_log_channel(guild, ["moderator_logs", "mod_logs", "server_logs"])
             if mod_channel:
                 entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_update, after.id)
                 mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Unknown Moderator"
@@ -227,9 +231,9 @@ class ServerLogging(commands.Cog):
                     self.add_footer(embed, author=entry.user if entry else None)
                     await mod_channel.send(embed=embed)
 
-        # Global Name / Username Changes (⚡┆MODERATOR-ONLY)
+        # Global Name / Username Changes (⚡┆MODERATOR-LOGS)
         if before.name != after.name or before.global_name != after.global_name:
-            mod_channel = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
+            mod_channel = self.get_log_channel(guild, ["moderator_logs", "mod_logs", "server_logs"])
             if mod_channel:
                 embed = discord.Embed(
                     title="👤 User Profile Name Changed",
@@ -397,11 +401,11 @@ class ServerLogging(commands.Cog):
             self.add_footer(embed, author=message.author)
             await log_ch.send(embed=embed)
 
-    # ── 5. Moderator Logs (⚡┆MODERATOR-ONLY: VC Join, Leave, Mute, Deafen, Disconnect) ──
+    # ── 5. Moderator Logs (⚡┆MODERATOR-LOGS: VC Join, Leave, Mute, Deafen, Disconnect) ──
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         guild = member.guild
-        mod_ch = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
+        mod_ch = self.get_log_channel(guild, ["moderator_logs", "mod_logs", "server_logs"])
         if not mod_ch:
             return
 
