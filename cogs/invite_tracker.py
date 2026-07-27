@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands
+import asyncio
 import json
 import os
 import config
+
 
 class InviteTracker(commands.Cog):
     """Cog for tracking server invites, who invited whom, and invite leaderboards."""
@@ -13,7 +15,10 @@ class InviteTracker(commands.Cog):
         self.invite_data = self.load_invite_data()
 
     async def cog_load(self):
-        """Build initial cache of all guild invites upon cog startup."""
+        """Schedule initial cache building as a background task after bot is ready."""
+        asyncio.create_task(self._init_invites_cache())
+
+    async def _init_invites_cache(self):
         await self.bot.wait_until_ready()
         for guild in self.bot.guilds:
             try:
@@ -23,6 +28,7 @@ class InviteTracker(commands.Cog):
                 print(f"[InviteTracker] Lacking Manage Server permissions in {guild.name}")
             except Exception as e:
                 print(f"[InviteTracker] Error fetching invites for {guild.name}: {e}")
+
 
     def load_invite_data(self):
         file_path = os.path.join(config.DATA_DIR, "invites.json")
