@@ -1,0 +1,13 @@
+{
+    "enabled": true,
+    "channel_name": "welcome",
+    "server_name": "Manjummel Boys",
+    "line2": "Have A Great Time here ❤️",
+    "rules_channel": "#📖┆DISCORD-RULES",
+    "welcome_title": "WELCOME",
+    "welcome_subtitle": "HI GUYS",
+    "bg_color": "#0f172a",
+    "title_color": "#00e678",
+    "name_color": "#ff2d55",
+    "auto_role": "family"
+}

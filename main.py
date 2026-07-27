@@ -106,17 +106,39 @@ def api_delete_youtuber(channel_id):
     save_youtubers(data)
     return jsonify({"success": True, "message": "Deleted YouTuber."})
 
-@app.route("/api/youtubers/toggle_ping/<channel_id>", methods=["POST"])
-def api_toggle_ping(channel_id):
-    data = load_youtubers()
-    youtubers = data.get("youtubers", [])
-    for y in youtubers:
-        if y.get("channel_id") == channel_id:
-            y["ping_enabled"] = not y.get("ping_enabled", True)
-            break
-    data["youtubers"] = youtubers
-    save_youtubers(data)
-    return jsonify({"success": True, "message": "Toggled ping setting."})
+@app.route("/welcome")
+def welcome_dashboard():
+    from cogs.welcome import load_welcome_config
+    config_data = load_welcome_config()
+    return render_template("welcome.html", config=config_data)
+
+@app.route("/api/welcome/update", methods=["POST"])
+def api_update_welcome():
+    from cogs.welcome import save_welcome_config
+    new_data = request.json
+    save_welcome_config(new_data)
+    return jsonify({"success": True, "message": "Updated welcome configuration."})
+
+@app.route("/api/welcome/test", methods=["POST"])
+def api_test_welcome():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    async def trigger_test():
+        welcome_cog = bot.get_cog("Welcome")
+        if welcome_cog and bot.guilds:
+            guild = bot.guilds[0]
+            channel = welcome_cog.get_welcome_channel(guild)
+            if channel and guild.members:
+                await welcome_cog.send_welcome_message(channel, guild.members[0])
+                return True
+        return False
+
+    success = loop.run_until_complete(trigger_test())
+    loop.close()
+    if success:
+        return jsonify({"success": True, "message": "Test welcome card sent to Discord!"})
+    return jsonify({"success": False, "message": "Failed to send test welcome card."})
 
 def run_web_server():
     port = int(os.environ.get("PORT", 5000))
@@ -138,6 +160,7 @@ bot = commands.Bot(
 
 INITIAL_COGS = [
     "cogs.general",
+    "cogs.welcome",
     "cogs.youtube",
     "cogs.music",
     "cogs.invite_tracker",

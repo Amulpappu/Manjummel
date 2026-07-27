@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koya-Style Welcome Dashboard - Manjummel Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #090d16;
+            --panel: #111827;
+            --accent: #00e678;
+            --accent-pink: #ff2d55;
+            --accent-glow: rgba(0, 230, 120, 0.3);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f3f4f6;
+            --text-dim: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.4rem;
+            background: linear-gradient(135deg, #00e678, #00b4d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--accent);
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            flex: 1;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.8rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            background: #0b1120;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .color-pickers {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .color-picker-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #0b1120;
+            padding: 0.5rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .color-picker-item input[type="color"] {
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.85rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00e678, #00b4d8);
+            color: #090d16;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 230, 120, 0.5);
+        }
+
+        .btn-secondary {
+            background: #1f293d;
+            color: #fff;
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #2d3b55;
+        }
+
+        /* Discord Preview Screen */
+        .discord-preview {
+            background: #313338;
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: 'Inter', sans-serif;
+            border: 1px solid #2b2d31;
+        }
+
+        .discord-msg-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 0.8rem;
+        }
+
+        .discord-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #5865f2;
+        }
+
+        .discord-bot-name {
+            font-weight: 700;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+
+        .discord-bot-tag {
+            background: #5865f2;
+            color: #fff;
+            font-size: 0.65rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-left: 6px;
+            font-weight: 700;
+        }
+
+        .discord-time {
+            color: #949ba4;
+            font-size: 0.75rem;
+            margin-left: 6px;
+        }
+
+        .discord-text-content {
+            color: #dbdee1;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            margin-left: 52px;
+            font-family: monospace;
+        }
+
+        .discord-user-mention {
+            color: #c9cdfb;
+            background: rgba(88, 101, 242, 0.15);
+            padding: 0 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        /* Generated Card Graphic Preview */
+        .card-graphic-preview {
+            margin-left: 52px;
+            margin-top: 1rem;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 2 / 1;
+            border-radius: 12px;
+            border: 2px solid #00e678;
+            background-color: var(--preview-bg, #0f172a);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .avatar-ring {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 3px solid #00e678;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .avatar-inner {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: url('https://cdn.discordapp.com/embed/avatars/0.png') center/cover;
+        }
+
+        .preview-title {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: var(--preview-title-color, #00e678);
+            letter-spacing: 1px;
+        }
+
+        .preview-username {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--preview-name-color, #ff2d55);
+            margin-top: 4px;
+        }
+
+        .preview-subtitle {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 4px;
+        }
+
+        .alert-box {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert-success {
+            background: rgba(0, 230, 120, 0.15);
+            border: 1px solid #00e678;
+            color: #00e678;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="brand">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Manjummel Web Dashboard
+        </div>
+        <div class="nav-links">
+            <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+            <a href="/welcome" class="active"><i class="fa-solid fa-hand-wave"></i> Welcome Cards</a>
+            <a href="/youtubers"><i class="fa-brands fa-youtube"></i> YouTubers</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- LEFT: Live Preview Screen -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-eye"></i> Live Discord Welcome Preview</h2>
+                <span style="color: var(--accent); font-size: 0.85rem; font-weight: 700;"><i class="fa-solid fa-circle"></i> Live Updating</span>
+            </div>
+
+            <div id="alertBox" class="alert-box alert-success">
+                <i class="fa-solid fa-circle-check"></i> <span id="alertMsg">Settings saved successfully!</span>
+            </div>
+
+            <div class="discord-preview">
+                <div class="discord-msg-header">
+                    <div class="discord-avatar"></div>
+                    <div>
+                        <span class="discord-bot-name">Nandini <span class="discord-bot-tag"><i class="fa-solid fa-check"></i> APP</span></span>
+                        <span class="discord-time">Today at 7:22 PM</span>
+                    </div>
+                </div>
+
+                <div class="discord-text-content" id="previewText">
+                    <span class="discord-user-mention">@Jiraiya Bot</span>
+======= (🎉) =======
+🌹 Welcome To Manjummel Boys ▫️
+🌹 Have A Great Time here ❤️
+🌹 You Are the 478 Member On Manjummel Boys ▫️
+🌹 Follow our Discord Rules #📖┆DISCORD-RULES ▫️
+======= (🔥) =======
+                </div>
+
+                <!-- Graphic Welcome Card Preview -->
+                <div class="card-graphic-preview" id="cardGraphic">
+                    <div class="avatar-ring">
+                        <div class="avatar-inner"></div>
+                    </div>
+                    <div class="preview-title" id="prevTitle">WELCOME</div>
+                    <div class="preview-username">JIRAIYA BOT#4187</div>
+                    <div class="preview-subtitle" id="prevSub">HI GUYS</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Form Settings Editor -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-sliders"></i> Edit Koya Welcome Card Settings</h2>
+            </div>
+
+            <form id="welcomeForm">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-server"></i> Server Name</label>
+                    <input type="text" class="form-control" id="server_name" value="{{ config.server_name }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-heart"></i> Line 2 Welcome Subtext</label>
+                    <input type="text" class="form-control" id="line2" value="{{ config.line2 }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-book"></i> Rules Channel Mention / Link</label>
+                    <input type="text" class="form-control" id="rules_channel" value="{{ config.rules_channel }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-font"></i> Welcome Card Title</label>
+                    <input type="text" class="form-control" id="welcome_title" value="{{ config.welcome_title }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-comment"></i> Welcome Card Subtitle (Bottom Line)</label>
+                    <input type="text" class="form-control" id="welcome_subtitle" value="{{ config.welcome_subtitle }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-hashtag"></i> Target Welcome Channel Name</label>
+                    <input type="text" class="form-control" id="channel_name" value="{{ config.channel_name }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-user-tag"></i> Auto-Assign Role Name</label>
+                    <input type="text" class="form-control" id="auto_role" value="{{ config.auto_role }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-palette"></i> Card Custom Colors</label>
+                    <div class="color-pickers">
+                        <div class="color-picker-item">
+                            <input type="color" id="bg_color" value="{{ config.bg_color }}">
+                            <span style="font-size: 0.8rem; color: #fff;">Background</span>
+                        </div>
+                        <div class="color-picker-item">
+                            <input type="color" id="title_color" value="{{ config.title_color }}">
+                            <span style="font-size: 0.8rem; color: #fff;">Title</span>
+                        </div>
+                        <div class="color-picker-item">
+                            <input type="color" id="name_color" value="{{ config.name_color }}">
+                            <span style="font-size: 0.8rem; color: #fff;">Name</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="sendTestWelcome()"><i class="fa-solid fa-paper-plane"></i> Send Test To Discord</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function updatePreview() {
+            const server = document.getElementById("server_name").value || "Manjummel Boys";
+            const line2 = document.getElementById("line2").value || "Have A Great Time here ❤️";
+            const rules = document.getElementById("rules_channel").value || "#📖┆DISCORD-RULES";
+            const title = document.getElementById("welcome_title").value || "WELCOME";
+            const sub = document.getElementById("welcome_subtitle").value || "HI GUYS";
+            const bg = document.getElementById("bg_color").value || "#0f172a";
+            const titleColor = document.getElementById("title_color").value || "#00e678";
+            const nameColor = document.getElementById("name_color").value || "#ff2d55";
+
+            document.getElementById("previewText").innerHTML = 
+                `<span class="discord-user-mention">@Jiraiya Bot</span>\n` +
+                `======= (🎉) =======\n` +
+                `🌹 Welcome To ${server} ▫️\n` +
+                `🌹 ${line2}\n` +
+                `🌹 You Are the 478 Member On ${server} ▫️\n` +
+                `🌹 Follow our Discord Rules ${rules} ▫️\n` +
+                `======= (🔥) =======`;
+
+            document.getElementById("prevTitle").innerText = title.toUpperCase();
+            document.getElementById("prevSub").innerText = sub.toUpperCase();
+
+            document.getElementById("cardGraphic").style.setProperty('--preview-bg', bg);
+            document.getElementById("prevTitle").style.setProperty('--preview-title-color', titleColor);
+            document.getElementById("cardGraphic").style.setProperty('--preview-name-color', nameColor);
+        }
+
+        document.querySelectorAll(".form-control, input[type='color']").forEach(input => {
+            input.addEventListener("input", updatePreview);
+        });
+
+        document.getElementById("welcomeForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const payload = {
+                server_name: document.getElementById("server_name").value,
+                line2: document.getElementById("line2").value,
+                rules_channel: document.getElementById("rules_channel").value,
+                welcome_title: document.getElementById("welcome_title").value,
+                welcome_subtitle: document.getElementById("welcome_subtitle").value,
+                channel_name: document.getElementById("channel_name").value,
+                auto_role: document.getElementById("auto_role").value,
+                bg_color: document.getElementById("bg_color").value,
+                title_color: document.getElementById("title_color").value,
+                name_color: document.getElementById("name_color").value,
+                enabled: true
+            };
+
+            const resp = await fetch("/api/welcome/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+            if (data.success) {
+                const alert = document.getElementById("alertBox");
+                document.getElementById("alertMsg").innerText = "Koya Welcome Settings Saved! Updated live on Discord!";
+                alert.style.display = "block";
+                setTimeout(() => alert.style.display = "none", 4000);
+            }
+        });
+
+        async function sendTestWelcome() {
+            const resp = await fetch("/api/welcome/test", { method: "POST" });
+            const data = await resp.json();
+            alert(data.message);
+        }
+
+        updatePreview();
+    </script>
+</body>
+</html>
