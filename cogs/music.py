@@ -1,23 +1,20 @@
 import discord
 from discord.ext import commands
 import asyncio
-import random
-import re
-import aiohttp
 import yt_dlp
-
-yt_dlp.utils.bug_reports_message = lambda: ''
+import aiohttp
+import re
+import json
 
 async def fetch_spotify_tracks(url: str):
     """Fetches track search terms from Spotify Track, Album, or Playlist URLs."""
     tracks = []
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9"
     }
 
-    
     async with aiohttp.ClientSession() as session:
         if "track" in url:
             oembed_url = f"https://open.spotify.com/oembed?url={url}"
@@ -31,30 +28,49 @@ async def fetch_spotify_tracks(url: str):
             except Exception as e:
                 print(f"[Spotify Error] oEmbed fetch failed: {e}")
         elif "playlist" in url or "album" in url:
+            spotify_id = url.split("?")[0].split("/")[-1]
+            embed_type = "playlist" if "playlist" in url else "album"
+            embed_url = f"https://open.spotify.com/embed/{embed_type}/{spotify_id}"
+            
             try:
-                async with session.get(url, headers=headers) as resp:
+                async with session.get(embed_url, headers=headers) as resp:
                     if resp.status == 200:
                         html = await resp.text()
-                        # Extract track names from meta tags or track listing JSON embedded in page
-                        titles = re.findall(r'<meta property="music:song" content="([^"]+)"/>', html)
-                        if not titles:
-                            og_titles = re.findall(r'<meta property="og:title" content="([^"]+)"/>', html)
-                            if og_titles:
-                                titles = og_titles
-                        if not titles:
-                            titles = re.findall(r'"name":"([^"]+)","track":', html)
+                        match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
+                        if match:
+                            try:
+                                json_data = json.loads(match.group(1))
+                                props = json_data.get("props", {}).get("pageProps", {})
+                                state = props.get("state", {})
+                                entity = state.get("data", {}).get("entity", {}) if isinstance(state, dict) else {}
+                                track_list = entity.get("trackList", [])
+                                for t in track_list:
+                                    t_name = t.get("title", "")
+                                    t_artist = t.get("subtitle") or t.get("artists", "")
+                                    if t_name:
+                                        full_query = f"{t_name} {t_artist}".strip()
+                                        if full_query not in tracks:
+                                            tracks.append(full_query)
+                            except Exception:
+                                pass
 
-                        for t in titles:
-                            if t and t not in tracks:
-                                tracks.append(t)
+                        if not tracks:
+                            titles = re.findall(r'<meta property="music:song" content="([^"]+)"/>', html)
+                            if not titles:
+                                titles = re.findall(r'"name":"([^"]+)","track":', html)
+                            for t in titles:
+                                if t and t not in tracks and len(t) > 2:
+                                    tracks.append(t)
             except Exception as e:
                 print(f"[Spotify Error] Playlist/Album fetch failed: {e}")
 
-    if not tracks:
-        clean_name = url.split("?")[0].split("/")[-1].replace("-", " ")
-        tracks.append(clean_name)
+    filtered = []
+    for t in tracks:
+        if len(t) == 22 and t.isalnum() and " " not in t:
+            continue
+        filtered.append(t)
 
-    return tracks
+    return filtered
 
 
 YTDL_OPTIONS = {
@@ -78,12 +94,10 @@ YTDL_OPTIONS = {
     }
 }
 
-
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36\r\n"',
     'options': '-vn',
 }
-
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
@@ -104,14 +118,12 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_event_loop()
         data = None
 
-        # Try direct extraction first
         try:
             target_url = url if (url.startswith("ytsearch:") or "youtube.com" in url or "youtu.be" in url) else f"ytsearch:{url}"
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
         except Exception as e:
             print(f"[YTDL Direct Error] {e}. Trying search fallback...")
 
-        # Datacenter IP bypass fallback search
         if not data:
             try:
                 search_query = url
@@ -138,20 +150,27 @@ class YTDLSource(discord.PCMVolumeTransformer):
             except Exception as ex:
                 print(f"[YTDL Fallback Error] {ex}")
 
-
         if not data:
             raise Exception("Could not extract video stream from YouTube.")
 
         if 'entries' in data and data['entries']:
-            data = data['entries'][0]
+            valid_entries = [e for e in data['entries'] if e and (e.get('url') or e.get('webpage_url'))]
+            if valid_entries:
+                data = valid_entries[0]
 
-        filename = data.get('url') or data.get('webpage_url')
-        if not stream:
-            filename = ytdl.prepare_filename(data)
+        filename = data.get('url')
+        if not filename or not filename.startswith("http"):
+            formats = data.get('formats', [])
+            audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('url')]
+            if audio_formats:
+                filename = audio_formats[0]['url']
+            else:
+                filename = data.get('webpage_url')
+
+        if not filename or not filename.startswith("http"):
+            raise Exception("No playable audio stream found for this track.")
 
         return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data, requester=requester)
-
-
 
 class MusicControlView(discord.ui.View):
     """Flavia-style Interactive Music Control Panel buttons."""
@@ -165,8 +184,7 @@ class MusicControlView(discord.ui.View):
     async def pause_play_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         vc = interaction.guild.voice_client
         if not vc:
-            return await interaction.response.send_message("❌ I am not connected to a voice channel.", ephemeral=True)
-        
+            return await interaction.response.send_message("❌ I'm not in a voice channel.", ephemeral=True)
         if vc.is_playing():
             vc.pause()
             await interaction.response.send_message("⏸️ Paused playback.", ephemeral=True)
@@ -179,11 +197,10 @@ class MusicControlView(discord.ui.View):
     @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️")
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         vc = interaction.guild.voice_client
-        if vc and (vc.is_playing() or vc.is_paused()):
-            vc.stop()
-            await interaction.response.send_message("⏭️ Skipped current track.", ephemeral=True)
-        else:
-            await interaction.response.send_message("❌ Nothing to skip.", ephemeral=True)
+        if not vc or not vc.is_playing():
+            return await interaction.response.send_message("❌ Nothing is playing to skip.", ephemeral=True)
+        vc.stop()
+        await interaction.response.send_message("⏭️ Skipped current track.", ephemeral=True)
 
     @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️")
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -240,7 +257,6 @@ class Music(commands.Cog):
         guild_id = ctx.guild.id
         queue = self.get_queue(guild_id)
 
-        # Check loop mode
         if self.loop_status.get(guild_id, False) and guild_id in self.current_track:
             track_info = self.current_track[guild_id]
         elif len(queue) > 0:
@@ -261,7 +277,6 @@ class Music(commands.Cog):
 
                 ctx.voice_client.play(player, after=after_playing)
 
-                # Send Flavia-style Now Playing embed with interactive view buttons
                 embed = discord.Embed(
                     title="🎵 NOW PLAYING",
                     description=f"**[{player.title}]({player.url})**",
@@ -277,7 +292,7 @@ class Music(commands.Cog):
                 view = MusicControlView(self, ctx)
                 await ctx.send(embed=embed, view=view)
             except Exception as e:
-                await ctx.send(f"❌ Error loading track: {e}")
+                await ctx.send(f"❌ Error loading track `{track_info.get('title')}`: {e}")
                 await self.play_next(ctx)
 
     @commands.command(name="join")
@@ -311,7 +326,7 @@ class Music(commands.Cog):
                 msg = await ctx.send("🟢 Resolving Spotify link...")
                 tracks = await fetch_spotify_tracks(search)
                 if not tracks:
-                    return await msg.edit(content="❌ Could not extract tracks from Spotify link.")
+                    return await msg.edit(content="❌ Could not extract tracks from Spotify link. (Please ensure playlist/track is public or try searching by song name!)")
                 
                 added_count = 0
                 for track_query in tracks:
@@ -351,57 +366,47 @@ class Music(commands.Cog):
                 description=f"**[{title}]({url})**",
                 color=discord.Color.green()
             )
-            embed.set_footer(text=f"Queue Position: #{len(queue)}")
             await ctx.send(embed=embed)
 
-
-    @commands.command(name="skip", aliases=["s"])
-    async def skip(self, ctx):
-        """Skips currently playing song."""
-        if ctx.voice_client and (ctx.voice_client.is_playing() or ctx.voice_client.is_paused()):
-            ctx.voice_client.stop()
-            await ctx.send("⏭️ Skipped current track.")
-        else:
-            await ctx.send("❌ Nothing to skip.")
-
-    @commands.command(name="stop")
-    async def stop(self, ctx):
-        """Stops playback and clears queue."""
-        self.queues[ctx.guild.id] = []
-        if ctx.voice_client:
-            ctx.voice_client.stop()
-            await ctx.send("🛑 Playback stopped & queue cleared.")
-
-    @commands.command(name="shuffle")
-    async def shuffle(self, ctx):
-        """Shuffles the current queue."""
-        queue = self.get_queue(ctx.guild.id)
-        if len(queue) < 2:
-            return await ctx.send("❌ Need at least 2 tracks in queue to shuffle.")
-        random.shuffle(queue)
-        await ctx.send("🔀 Shuffled music queue!")
-
-    @commands.command(name="queue", aliases=["q"])
-    async def queue(self, ctx):
-        """Displays music queue."""
-        queue = self.get_queue(ctx.guild.id)
-        if not queue:
-            return await ctx.send("📜 Queue is empty.")
-        
-        description = "\n".join([f"**{i+1}.** [{item['title']}]({item['url']})" for i, item in enumerate(queue[:10])])
-        if len(queue) > 10:
-            description += f"\n\n*...and {len(queue)-10} more tracks.*"
-            
-        embed = discord.Embed(title="🎶 Current Music Queue", description=description, color=discord.Color.purple())
-        await ctx.send(embed=embed)
-
-    @commands.command(name="leave", aliases=["dc"])
+    @commands.command(name="leave", aliases=["dc", "disconnect"])
     async def leave(self, ctx):
-        """Leaves voice channel."""
-        self.queues[ctx.guild.id] = []
+        """Stops music and disconnects the bot from the voice channel."""
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
             await ctx.send("👋 Disconnected from voice channel.")
+
+    @commands.command(name="skip", aliases=["s"])
+    async def skip(self, ctx):
+        """Skips the currently playing song."""
+        if ctx.voice_client and ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+            await ctx.send("⏭️ Skipped current track.")
+        else:
+            await ctx.send("❌ Nothing is currently playing.")
+
+    @commands.command(name="stop")
+    async def stop(self, ctx):
+        """Stops the music and clears the queue."""
+        guild_id = ctx.guild.id
+        self.queues[guild_id] = []
+        if ctx.voice_client:
+            ctx.voice_client.stop()
+        await ctx.send("🛑 Stopped playback and cleared queue.")
+
+    @commands.command(name="queue", aliases=["q"])
+    async def queue(self, ctx):
+        """Displays the current music queue."""
+        guild_id = ctx.guild.id
+        queue = self.get_queue(guild_id)
+        if not queue:
+            return await ctx.send("📜 Queue is currently empty.")
+
+        description = "\n".join([f"**{i+1}.** [{item['title']}]({item['url']})" for i, item in enumerate(queue[:10])])
+        if len(queue) > 10:
+            description += f"\n\n*...and {len(queue)-10} more tracks.*"
+
+        embed = discord.Embed(title="🎶 Current Music Queue", description=description, color=discord.Color.purple())
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
