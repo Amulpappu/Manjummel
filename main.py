@@ -10,8 +10,15 @@ if sys.platform == "win32":
     except Exception:
         pass
 
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception:
+    pass
+
 import threading
 import asyncio
+
 import logging
 import discord
 from discord.ext import commands
