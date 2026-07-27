@@ -44,13 +44,32 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=True, requester=None):
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        try:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        except Exception:
+            # Fallback with fresh YoutubeDL instance
+            fallback_opts = {
+                'format': 'bestaudio/best',
+                'quiet': True,
+                'no_warnings': True,
+                'default_search': 'ytsearch',
+                'source_address': '0.0.0.0'
+            }
+            fallback_ytdl = yt_dlp.YoutubeDL(fallback_opts)
+            data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(url, download=not stream))
 
-        if 'entries' in data:
+        if not data:
+            raise Exception("Could not extract video data from YouTube.")
+
+        if 'entries' in data and data['entries']:
             data = data['entries'][0]
 
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        filename = data.get('url') or data.get('webpage_url')
+        if not stream:
+            filename = ytdl.prepare_filename(data)
+
         return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data, requester=requester)
+
 
 class MusicControlView(discord.ui.View):
     """Flavia-style Interactive Music Control Panel buttons."""
