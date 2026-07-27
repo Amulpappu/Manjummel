@@ -56,13 +56,15 @@ class ServerLogging(commands.Cog):
         """Fetches the latest audit log entry for a specific action and target user/role/channel."""
         try:
             async for entry in guild.audit_logs(limit=5, action=action):
-                if target_id is None or (entry.target and entry.target.id == target_id):
-                    now = datetime.datetime.now(datetime.timezone.utc)
-                    entry_time = entry.created_at
-                    if (now - entry_time).total_seconds() < 15:
+                now = datetime.datetime.now(datetime.timezone.utc)
+                entry_time = entry.created_at
+                if (now - entry_time).total_seconds() < 15:
+                    if action == discord.AuditLogAction.member_disconnect:
                         return entry
-        except Exception:
-            pass
+                    if target_id is None or (entry.target and entry.target.id == target_id):
+                        return entry
+        except Exception as e:
+            print(f"[Audit Log Fetch Error] {e}")
         return None
 
     # ── Automatic Channel Creation Command ───────────────────
@@ -454,7 +456,7 @@ class ServerLogging(commands.Cog):
         # Left or Disconnected VC
         elif before.channel is not None and after.channel is None:
             entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_disconnect, member.id)
-            if entry and entry.user and entry.user.id != member.id:
+            if entry and entry.user:
                 embed = discord.Embed(
                     title="🔌 Disconnected from Voice Channel",
                     description=f"**Target User:** {member.mention} (`{member.id}`)\n"
