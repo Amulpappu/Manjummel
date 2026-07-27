@@ -68,10 +68,15 @@ async def main():
                 logger.error(f"❌ Failed to load cog {cog}: {e}")
 
         if not config.DISCORD_TOKEN or config.DISCORD_TOKEN == "YOUR_DISCORD_BOT_TOKEN":
-            logger.error("❌ DISCORD_TOKEN is missing or invalid! Set DISCORD_TOKEN in config.py or .env")
+            logger.error("❌ DISCORD_TOKEN is missing! Set DISCORD_TOKEN in Render Environment Variables.")
             return
 
-        await bot.start(config.DISCORD_TOKEN)
+        try:
+            logger.info("🔑 Connecting to Discord Gateway API...")
+            await bot.start(config.DISCORD_TOKEN)
+        except Exception as e:
+            logger.error(f"❌ DISCORD LOGIN FAILED: {e}")
+
 
 if __name__ == "__main__":
     try:
