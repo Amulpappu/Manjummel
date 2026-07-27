@@ -1,5 +1,14 @@
 import os
 import sys
+
+# Force immediate unbuffered logging for Render live console output
+os.environ["PYTHONUNBUFFERED"] = "1"
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
 import threading
 import asyncio
 import logging
@@ -9,7 +18,11 @@ from flask import Flask
 import config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger("ManjummelBot")
 
 # ── Render HTTP Port Binding Web Server ────────────────────
@@ -49,7 +62,7 @@ INITIAL_COGS = [
 
 @bot.event
 async def on_ready():
-    logger.info(f"👑 Logged in as {bot.user} (ID: {bot.user.id})")
+    logger.info(f"👑 LOGGED IN SUCCESSFULLY as {bot.user} (ID: {bot.user.id})")
     logger.info(f"🤖 Connected to {len(bot.guilds)} server(s).")
     await bot.change_presence(
         activity=discord.Activity(
@@ -65,22 +78,24 @@ async def main():
                 await bot.load_extension(cog)
                 logger.info(f"✅ Loaded cog: {cog}")
             except Exception as e:
-                logger.error(f"❌ Failed to load cog {cog}: {e}")
+                logger.error(f"❌ Failed to load cog {cog}: {e}", exc_info=True)
 
-        if not config.DISCORD_TOKEN or config.DISCORD_TOKEN == "YOUR_DISCORD_BOT_TOKEN":
-            logger.error("❌ DISCORD_TOKEN is missing! Set DISCORD_TOKEN in Render Environment Variables.")
+        token = config.DISCORD_TOKEN
+        if not token or token == "YOUR_DISCORD_BOT_TOKEN":
+            logger.error("❌ DISCORD_TOKEN is missing! Please set DISCORD_TOKEN in Render Environment Variables.")
             return
 
         try:
             logger.info("🔑 Connecting to Discord Gateway API...")
-            await bot.start(config.DISCORD_TOKEN)
+            await bot.start(token)
+        except discord.LoginFailure:
+            logger.error("❌ DISCORD LOGIN FAILURE: Improper or Invalid Bot Token provided!")
         except Exception as e:
-            logger.error(f"❌ DISCORD LOGIN FAILED: {e}")
-
+            logger.error(f"❌ DISCORD LOGIN FAILED: {e}", exc_info=True)
 
 if __name__ == "__main__":
     try:
-        # Start background web server to satisfy Render Web Service port binding
+        # Start background web server for Render port binding
         web_thread = threading.Thread(target=run_web_server, daemon=True)
         web_thread.start()
 
