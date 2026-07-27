@@ -1,0 +1,20 @@
+{
+  "status": 404,
+  "title": "Page not found",
+  "description": "We can\u2019t seem to find the page you are looking for.",
+  "links": [
+    {
+      "href": "https://open.spotify.com",
+      "title": "Home",
+      "isPrimaryStyle": true
+    },
+    {
+      "href": "https://support.spotify.com/",
+      "title": "Help",
+      "isPrimaryStyle": false
+    }
+  ],
+  "rtl": false,
+  "_sentryTraceData": "0d3f61f65ac6ec37717d764db8b1cd26-b3d6556c6e0a6b54-0",
+  "_sentryBaggage": "sentry-environment=production,sentry-release=f42aad77a611653a77db0f79a5b917562e7cceee,sentry-public_key=4cc707ab12ea4779b417479c0550a5cb,sentry-trace_id=0d3f61f65ac6ec37717d764db8b1cd26,sentry-org_id=22381,sentry-sampled=false,sentry-sample_rand=0.8597619635211482,sentry-sample_rate=0"
+}

@@ -11,7 +11,12 @@ yt_dlp.utils.bug_reports_message = lambda: ''
 async def fetch_spotify_tracks(url: str):
     """Fetches track search terms from Spotify Track, Album, or Playlist URLs."""
     tracks = []
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+
     
     async with aiohttp.ClientSession() as session:
         if "track" in url:
@@ -68,7 +73,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['mweb', 'android']
+            'player_client': ['ios', 'android']
         }
     }
 }
@@ -123,7 +128,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     'source_address': '0.0.0.0',
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['mweb', 'android']
+                            'player_client': ['ios', 'android']
                         }
                     }
                 }
@@ -131,6 +136,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(search_query, download=not stream))
             except Exception as ex:
                 print(f"[YTDL Fallback Error] {ex}")
+
 
         if not data:
             raise Exception("Could not extract video stream from YouTube.")
