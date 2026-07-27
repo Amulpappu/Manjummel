@@ -52,16 +52,17 @@ class General(commands.Cog):
 
     @commands.command(name="botinfo")
     async def botinfo(self, ctx):
-        """Displays information about Rajan Bot."""
+        """Displays information about Manjummel Bot."""
         uptime_seconds = int(time.time() - self.start_time)
         hours, remainder = divmod(uptime_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         
         embed = discord.Embed(
-            title="🤖 Rajan Bot — Ultimate All-In-One",
+            title="🤖 Manjummel Bot — Ultimate All-In-One",
             description="Your feature-rich Discord bot featuring Music (Flavia), Welcome Cards (Koya), Invite Tracker, Moderation (ProBot/Carl), and Birthday Celebrations (WishWave)!",
             color=discord.Color.blue()
         )
+
         embed.add_field(name="Latency", value=f"{round(self.bot.latency * 1000)}ms", inline=True)
         embed.add_field(name="Uptime", value=f"{hours}h {minutes}m {seconds}s", inline=True)
         embed.add_field(name="Servers", value=str(len(self.bot.guilds)), inline=True)

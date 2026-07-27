@@ -6,7 +6,7 @@ import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-logger = logging.getLogger("RajanBot")
+logger = logging.getLogger("ManjummelBot")
 
 # Configure Intents (All intents enabled for Moderation, Invites & Voice)
 intents = discord.Intents.default()
@@ -37,7 +37,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name=f"{config.COMMAND_PREFIX}help | Rajan Ultimate All-In-One"
+            name=f"{config.COMMAND_PREFIX}help | Manjummel Bot"
         )
     )
 

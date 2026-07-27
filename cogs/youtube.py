@@ -136,9 +136,10 @@ class YouTube(commands.Cog):
                 
                 embed.add_field(name="Channel", value=f"**{author_name}**", inline=True)
                 embed.add_field(name="Watch Link", value=f"[Watch Video]({link})", inline=True)
-                embed.set_footer(text="Rajan YouTube Live Alert", icon_url="https://www.youtube.com/s/desktop/f71fb147/img/favicon.ico")
+                embed.set_footer(text="Manjummel YouTube Live Alert", icon_url="https://www.youtube.com/s/desktop/f71fb147/img/favicon.ico")
                 
                 await channel.send(content=content_msg, embed=embed)
+
 
 
     @yt_check_loop.before_loop
