@@ -97,18 +97,50 @@ def api_delete_youtuber(channel_id):
     save_youtubers(data)
     return jsonify({"success": True, "message": "Deleted YouTuber."})
 
+WELCOME_CONFIG_FILE = os.path.join(DATA_DIR, "welcome_config.json")
+
+def load_welcome_config():
+    if os.path.exists(WELCOME_CONFIG_FILE):
+        try:
+            with open(WELCOME_CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        "enabled": True,
+        "channel_name": "welcome",
+        "server_name": "Manjummel Boys",
+        "line2": "Have A Great Time here ❤️",
+        "rules_channel": "#📖┆DISCORD-RULES",
+        "welcome_title": "WELCOME",
+        "welcome_subtitle": "HI GUYS",
+        "bg_color": "#0f172a",
+        "title_color": "#00e678",
+        "name_color": "#ff2d55",
+        "auto_role": "family"
+    }
+
+def save_welcome_config(data):
+    with open(WELCOME_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
 @app.route("/welcome")
 def welcome_dashboard():
-    from cogs.welcome import load_welcome_config
-    config_data = load_welcome_config()
-    return render_template("welcome.html", welcome_config=config_data)
+    try:
+        config_data = load_welcome_config()
+        return render_template("welcome.html", welcome_config=config_data)
+    except Exception as e:
+        logger.error(f"[Welcome Dashboard Error] {e}")
+        return f"Error loading welcome dashboard: {e}", 500
 
 @app.route("/api/welcome/update", methods=["POST"])
 def api_update_welcome():
-    from cogs.welcome import save_welcome_config
-    new_data = request.json
-    save_welcome_config(new_data)
-    return jsonify({"success": True, "message": "Updated welcome configuration."})
+    try:
+        new_data = request.json or {}
+        save_welcome_config(new_data)
+        return jsonify({"success": True, "message": "Updated welcome configuration."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route("/api/welcome/test", methods=["POST"])
 def api_test_welcome():
