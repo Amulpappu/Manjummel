@@ -27,7 +27,7 @@ def format_time_ago(dt: datetime.datetime) -> str:
         return "Just now"
 
 class ServerLogging(commands.Cog):
-    """Comprehensive Discord Audit & Event Logging Cog matching Yazhini & Manjummel styling."""
+    """Comprehensive Discord Audit & Event Logging Cog for Manjummel Bot."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -48,6 +48,19 @@ class ServerLogging(commands.Cog):
         prefix = f"{author.name} • " if author else "Manjummel™ • "
         embed.set_footer(text=f"{prefix}{now_str}")
 
+    async def get_audit_log_entry(self, guild: discord.Guild, action: discord.AuditLogAction, target_id: int = None):
+        """Fetches the latest audit log entry for a specific action and target user."""
+        try:
+            async for entry in guild.audit_logs(limit=5, action=action):
+                if target_id is None or (entry.target and entry.target.id == target_id):
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    entry_time = entry.created_at
+                    if (now - entry_time).total_seconds() < 15:
+                        return entry
+        except Exception:
+            pass
+        return None
+
     # ── Automatic Channel Creation Command ───────────────────
     @commands.command(name="setupchannels", aliases=["createlogchannels"])
     @commands.has_permissions(administrator=True)
@@ -66,7 +79,7 @@ class ServerLogging(commands.Cog):
             ("⚡┆LEAVE-LOGS", "Audit logs for member leaves and kicks."),
             ("⚡┆ROLE-LOGS", "Audit logs for role assignments and permission updates."),
             ("⚡┆SERVER-LOGS", "Audit logs for channel creations, role edits, and message deletions."),
-            ("⚡┆MODERATOR-ONLY", "Audit logs for voice channel activity and moderator actions."),
+            ("⚡┆MODERATOR-ONLY", "Audit logs for voice channel activity, mutes, deafens, timeouts, and nickname changes."),
             ("⚡┆INVITE-LOGS", "Audit logs for server invite tracking."),
             ("🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ", "Channel for birthday celebration cards."),
             ("🙏┆ᴡᴇʟᴄᴏᴍᴇ", "Channel for welcoming new members."),
@@ -117,21 +130,26 @@ class ServerLogging(commands.Cog):
             self.add_footer(embed)
             await channel.send(embed=embed)
 
-    # ── 2. Role & Nickname Logs (⚡┆ROLE-LOGS & ⚡┆MODERATOR-ONLY) ─
+    # ── 2. Role, Nickname & Timeout Logs (⚡┆ROLE-LOGS & ⚡┆MODERATOR-ONLY) ─
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
+        guild = before.guild
+
         # Role Changes (⚡┆ROLE-LOGS)
         if before.roles != after.roles:
-            role_channel = self.get_log_channel(before.guild, ["role_logs"])
+            role_channel = self.get_log_channel(guild, ["role_logs"])
             if role_channel:
                 added_roles = [r.mention for r in after.roles if r not in before.roles]
                 removed_roles = [r.mention for r in before.roles if r not in after.roles]
+
+                entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_role_update, after.id)
+                mod_info = f"\n**Responsible Moderator:** {entry.user.mention} (`{entry.user.name}`)" if entry and entry.user else ""
 
                 if added_roles:
                     embed = discord.Embed(
                         title="🎭 Role Assigned",
                         description=f"**User:** {after.mention} (`{after.id}`)\n"
-                                    f"**Added Role(s):** {', '.join(added_roles)}",
+                                    f"**Added Role(s):** {', '.join(added_roles)}{mod_info}",
                         color=discord.Color.blue()
                     )
                     self.add_footer(embed)
@@ -141,7 +159,7 @@ class ServerLogging(commands.Cog):
                     embed = discord.Embed(
                         title="🎭 Role Removed",
                         description=f"**User:** {after.mention} (`{after.id}`)\n"
-                                    f"**Removed Role(s):** {', '.join(removed_roles)}",
+                                    f"**Removed Role(s):** {', '.join(removed_roles)}{mod_info}",
                         color=discord.Color.orange()
                     )
                     self.add_footer(embed)
@@ -149,24 +167,56 @@ class ServerLogging(commands.Cog):
 
         # Server Nickname Changes (⚡┆MODERATOR-ONLY)
         if before.nick != after.nick:
-            mod_channel = self.get_log_channel(before.guild, ["moderator_only", "moderator_logs", "mod_logs"])
+            mod_channel = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
             if mod_channel:
                 old_nick = before.nick if before.nick else "None (No Nickname)"
                 new_nick = after.nick if after.nick else "None (Reset to Username)"
+
+                entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_update, after.id)
+                mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user and entry.user.id != after.id) else "Self (User)"
+
                 embed = discord.Embed(
                     title="✏️ Server Nickname Changed",
-                    description=f"**User:** {after.mention} (`{after.id}`)\n"
-                                f"**Discord Username:** `{after.name}`\n"
+                    description=f"**Target User:** {after.mention} (`{after.id}`)\n"
                                 f"**Before Nickname:** `{old_nick}`\n"
-                                f"**After Nickname:** `{new_nick}`",
+                                f"**After Nickname:** `{new_nick}`\n"
+                                f"**Changed By (Moderator):** {mod_str}",
                     color=discord.Color.gold()
                 )
                 self.add_footer(embed)
                 await mod_channel.send(embed=embed)
 
+        # Timeout Logs (⚡┆MODERATOR-ONLY)
+        if before.timed_out_until != after.timed_out_until:
+            mod_channel = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
+            if mod_channel:
+                entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_update, after.id)
+                mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Unknown Moderator"
+
+                if after.timed_out_until and after.timed_out_until > datetime.datetime.now(datetime.timezone.utc):
+                    ts = int(after.timed_out_until.timestamp())
+                    embed = discord.Embed(
+                        title="⏳ Member Timed Out",
+                        description=f"**Target User:** {after.mention} (`{after.id}`)\n"
+                                    f"**Responsible Moderator:** {mod_str}\n"
+                                    f"**Timed Out Until:** <t:{ts}:F> (<t:{ts}:R>)",
+                        color=discord.Color.red()
+                    )
+                    self.add_footer(embed)
+                    await mod_channel.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="⏱️ Timeout Removed",
+                        description=f"**Target User:** {after.mention} (`{after.id}`)\n"
+                                    f"**Responsible Moderator:** {mod_str}",
+                        color=discord.Color.green()
+                    )
+                    self.add_footer(embed)
+                    await mod_channel.send(embed=embed)
+
         # Global Name / Username Changes (⚡┆MODERATOR-ONLY)
         if before.name != after.name or before.global_name != after.global_name:
-            mod_channel = self.get_log_channel(before.guild, ["moderator_only", "moderator_logs", "mod_logs"])
+            mod_channel = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
             if mod_channel:
                 embed = discord.Embed(
                     title="👤 User Profile Name Changed",
@@ -222,12 +272,45 @@ class ServerLogging(commands.Cog):
             self.add_footer(embed, author=message.author)
             await log_ch.send(embed=embed)
 
-    # ── 4. Moderator Logs (⚡┆MODERATOR-ONLY: VC Join & Leave) ──
+    # ── 4. Moderator Logs (⚡┆MODERATOR-ONLY: VC Join, Leave, Mute, Deafen, Disconnect) ──
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        mod_ch = self.get_log_channel(member.guild, ["moderator_only", "moderator_logs", "mod_logs"])
+        guild = member.guild
+        mod_ch = self.get_log_channel(guild, ["moderator_only", "moderator_logs", "mod_logs"])
         if not mod_ch:
             return
+
+        # Server Mute Updates
+        if before.mute != after.mute:
+            entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_update, member.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
+            status_str = "Server Muted 🎙️" if after.mute else "Server Unmuted 🎙️"
+
+            embed = discord.Embed(
+                title=f"🎙️ Voice {status_str}",
+                description=f"**Target User:** {member.mention} (`{member.id}`)\n"
+                            f"**Action:** {status_str}\n"
+                            f"**Responsible Moderator:** {mod_str}",
+                color=discord.Color.red() if after.mute else discord.Color.green()
+            )
+            self.add_footer(embed)
+            await mod_ch.send(embed=embed)
+
+        # Server Deafen Updates
+        if before.deaf != after.deaf:
+            entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_update, member.id)
+            mod_str = f"{entry.user.mention} (`{entry.user.name}`)" if (entry and entry.user) else "Moderator / System"
+            status_str = "Server Deafened 🎧" if after.deaf else "Server Undeafened 🎧"
+
+            embed = discord.Embed(
+                title=f"🎧 Voice {status_str}",
+                description=f"**Target User:** {member.mention} (`{member.id}`)\n"
+                            f"**Action:** {status_str}\n"
+                            f"**Responsible Moderator:** {mod_str}",
+                color=discord.Color.red() if after.deaf else discord.Color.green()
+            )
+            self.add_footer(embed)
+            await mod_ch.send(embed=embed)
 
         # Joined VC
         if before.channel is None and after.channel is not None:
@@ -239,13 +322,23 @@ class ServerLogging(commands.Cog):
             self.add_footer(embed)
             await mod_ch.send(embed=embed)
 
-        # Left VC
+        # Left or Disconnected VC
         elif before.channel is not None and after.channel is None:
-            embed = discord.Embed(
-                description=f"**{member.name}**\n"
-                            f"🔇 **left voice channel** `{before.channel.name}`",
-                color=discord.Color.red()
-            )
+            entry = await self.get_audit_log_entry(guild, discord.AuditLogAction.member_disconnect, member.id)
+            if entry and entry.user and entry.user.id != member.id:
+                embed = discord.Embed(
+                    title="🔌 Disconnected from Voice Channel",
+                    description=f"**Target User:** {member.mention} (`{member.id}`)\n"
+                                f"**Channel:** `{before.channel.name}`\n"
+                                f"**Disconnected By (Moderator):** {entry.user.mention} (`{entry.user.name}`)",
+                    color=discord.Color.dark_red()
+                )
+            else:
+                embed = discord.Embed(
+                    description=f"**{member.name}**\n"
+                                f"🔇 **left voice channel** `{before.channel.name}`",
+                    color=discord.Color.red()
+                )
             self.add_footer(embed)
             await mod_ch.send(embed=embed)
 
