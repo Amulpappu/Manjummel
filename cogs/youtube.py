@@ -121,6 +121,11 @@ def normalize_unicode_text(text: str) -> str:
         res += small_caps_map.get(char, char)
     return res.replace("-", "_").replace(" ", "_")
 
+class LiveStreamView(discord.ui.View):
+    def __init__(self, url: str):
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(label="View", url=url, style=discord.ButtonStyle.link))
+
 class YouTube(commands.Cog):
     """YouTube Live Stream Auto-Notifier & Self-Promotion Monitor for Manjummel Bot."""
 
@@ -268,22 +273,10 @@ class YouTube(commands.Cog):
                     role_mention = ping_role.mention if ping_role else "@family"
                     streamer_name = matched_yt.get('name', 'AMULPAPPU_001')
 
-                    content_text = (
-                        f"🔴 {role_mention} **{streamer_name} IS LIVE!**\n"
-                        f"🎬 **[{video_title}]({target_url})**\n"
-                        f"👉 **[Click Here to Watch Stream]({target_url})**"
-                    )
+                    content_text = f"{role_mention} **{streamer_name}** just posted **{video_title}**\n{target_url}"
+                    view = LiveStreamView(target_url)
 
-                    embed = discord.Embed(
-                        title=f"🔴 {streamer_name} IS LIVE!",
-                        description=f"🎬 **[{video_title}]({target_url})**\n\n👉 **[Click Here to Watch Stream]({target_url})**",
-                        color=discord.Color.red(),
-                        url=target_url
-                    )
-                    embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
-                    embed.set_footer(text="Manjummel Live Stream Alert", icon_url="https://www.youtube.com/s/desktop/f71fb147/img/favicon.ico")
-
-                    await message.channel.send(content=content_text, embed=embed)
+                    await message.channel.send(content=content_text, view=view)
                 else:
                     print(f"[Self-Promo] Unregistered live link posted by {message.author.display_name} - No @family ping.")
 
@@ -340,22 +333,10 @@ class YouTube(commands.Cog):
                                     role_str = ping_role.mention if ping_role else "@family"
                                     streamer_name = y.get('name', 'AMULPAPPU_001')
 
-                                    content_text = (
-                                        f"🔴 {role_str} **{streamer_name} IS LIVE!**\n"
-                                        f"🎬 **[{title}]({link})**\n"
-                                        f"👉 **[Click Here to Watch Stream]({link})**"
-                                    )
+                                    content_text = f"{role_str} **{streamer_name}** just posted **{title}**\n{link}"
+                                    view = LiveStreamView(link)
 
-                                    embed = discord.Embed(
-                                        title=f"🔴 {streamer_name} IS LIVE!",
-                                        description=f"🎬 **[{title}]({link})**\n\n👉 **[Click Here to Watch Stream]({link})**",
-                                        color=discord.Color.red(),
-                                        url=link
-                                    )
-                                    embed.set_image(url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg")
-                                    embed.set_footer(text="Manjummel Automated YouTube Live Alert")
-
-                                    await promo_ch.send(content=content_text, embed=embed)
+                                    await promo_ch.send(content=content_text, view=view)
                 except Exception as e:
                     print(f"[YouTube Loop Error] Channel {ch_id}: {e}")
 
