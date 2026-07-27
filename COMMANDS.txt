@@ -5,7 +5,19 @@
 Default Prefix: !
 
 --------------------------------------------------------------------------------
-1. GENERAL & SERVER UTILITY
+1. AUTOMATIC CHANNEL & AUDIT LOG SETUP
+--------------------------------------------------------------------------------
+!setupchannels              - Automatically creates all formatted announcement 
+                             and audit log channels under a category:
+                             • 🎂┆ʙɪʀᴛʜᴅᴀʏ-ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ
+                             • 🙏┆ᴡᴇʟᴄᴏᴍᴇ
+                             • 📋┆join-leave-logs
+                             • 🎭┆role-logs
+                             • ⚙️┆server-logs
+                             • 🛡️┆moderator-logs
+
+--------------------------------------------------------------------------------
+2. GENERAL & SERVER UTILITY
 --------------------------------------------------------------------------------
 !ping                       - Checks bot response latency in milliseconds.
 !botinfo                    - Displays bot uptime, server count, and version info.
@@ -13,7 +25,7 @@ Default Prefix: !
 !removerole @user <RoleName>- Removes a role from a server member (Requires Manage Roles).
 
 --------------------------------------------------------------------------------
-2. MUSIC PLAYER (Flavia Style with Interactive Buttons)
+3. MUSIC PLAYER (Flavia Style with Interactive Buttons)
 --------------------------------------------------------------------------------
 !play <query / URL>         - Searches YouTube or plays the given URL.
 !pause                      - Pauses current music playback.
@@ -25,13 +37,13 @@ Default Prefix: !
 !leave                      - Disconnects bot from the voice channel.
 
 --------------------------------------------------------------------------------
-3. INVITE TRACKER (Invite Tracker Style)
+4. INVITE TRACKER (Invite Tracker Style)
 --------------------------------------------------------------------------------
 !invites [@user]            - Shows real, total, and left invite stats for a user.
 !invitesleaderboard         - Displays top server inviters leaderboard.
 
 --------------------------------------------------------------------------------
-4. MODERATION & SERVER ANALYTICS (ProBot / Carl-bot / StatBot Style)
+5. MODERATION & SERVER ANALYTICS (ProBot / Carl-bot / StatBot Style)
 --------------------------------------------------------------------------------
 !warn @user <reason>        - Warns a member and records warning in database.
 !warns [@user]              - Checks warning history for a user.
@@ -43,7 +55,7 @@ Default Prefix: !
 !userinfo [@user]           - Displays account age, joined date, roles & user ID.
 
 --------------------------------------------------------------------------------
-5. BIRTHDAY ANNOUNCEMENTS (WishWave Style)
+6. BIRTHDAY ANNOUNCEMENTS (WishWave Style)
 --------------------------------------------------------------------------------
 !setbirthday MM-DD          - Sets your birthday (e.g. !setbirthday 07-25).
 !setbirthdaymsg <message>   - Saves a personal custom birthday wish note.
@@ -51,7 +63,7 @@ Default Prefix: !
 !listbirthdays              - Lists all registered server birthdays.
 
 --------------------------------------------------------------------------------
-6. YOUTUBE LIVE & VIDEO ALERTS
+7. YOUTUBE LIVE & VIDEO ALERTS
 --------------------------------------------------------------------------------
 !addyt <Channel_ID>         - Adds a YouTube Channel ID (starts with UC...) to track.
 !setytrole @Role            - Sets specific role pinged when a stream/video goes live.

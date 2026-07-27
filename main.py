@@ -28,7 +28,9 @@ INITIAL_COGS = [
     "cogs.music",
     "cogs.invite_tracker",
     "cogs.moderation",
+    "cogs.logging",
 ]
+
 
 @bot.event
 async def on_ready():
