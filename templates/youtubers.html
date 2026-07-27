@@ -355,15 +355,10 @@
                     <div class="yt-info">
                         <h4>{{ y.name }} <span style="font-size: 0.85rem; color: var(--text-sub);">({{ y.handle }})</span></h4>
                         <p>ID: <code>{{ y.channel_id }}</code></p>
-                        {% if y.ping_enabled %}
-                            <span class="badge badge-ping">Pings @{{ ping_role }} Enabled</span>
-                        {% else %}
-                            <span class="badge badge-disabled">Pings Disabled</span>
-                        {% endif %}
+                        <span class="badge badge-ping">🟢 Auto-Pings @{{ ping_role }}</span>
                     </div>
                     <div class="actions">
-                        <button class="btn-sm btn-toggle" onclick="togglePing('{{ y.channel_id }}')">Toggle Ping</button>
-                        <button class="btn-sm btn-delete" onclick="deleteYt('{{ y.channel_id }}')">Remove</button>
+                        <button class="btn-sm btn-delete" onclick="deleteYt('{{ y.channel_id }}')">Remove Streamer</button>
                     </div>
                 </div>
                 {% else %}

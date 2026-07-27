@@ -209,7 +209,7 @@ class YouTube(commands.Cog):
                         matched_yt = youtubers[0]
 
                 # 3. If REGISTERED YouTuber or Admin: Post @family ping announcement (Do NOT delete raw message)
-                if matched_yt and matched_yt.get("ping_enabled", True):
+                if matched_yt:
                     ping_role = self.get_ping_role(message.guild)
                     role_mention = ping_role.mention if ping_role else "@family"
                     streamer_name = matched_yt.get('name', 'AMULPAPPU 001')
