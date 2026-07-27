@@ -73,6 +73,19 @@ async def resolve_channel_id(handle_or_url: str):
             print(f"[YouTube Resolve Error] {e}")
     return None, url
 
+def normalize_unicode_text(text: str) -> str:
+    """Normalizes Unicode small-caps and styled fonts to standard ASCII lowercase."""
+    small_caps_map = {
+        'ꜱ': 's', 'ᴇ': 'e', 'ʟ': 'l', 'ꜰ': 'f', 'ᴘ': 'p', 'ʀ': 'r', 
+        'ᴏ': 'o', 'ᴍ': 'm', 'ᴛ': 't', 'ɪ': 'i', 'ɴ': 'n', 'ᴀ': 'a',
+        'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ɢ': 'g', 'ʜ': 'h', 'ᴊ': 'j',
+        'ᴋ': 'k', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z'
+    }
+    res = ""
+    for char in text.lower():
+        res += small_caps_map.get(char, char)
+    return res.replace("-", "_").replace(" ", "_")
+
 class YouTube(commands.Cog):
     """YouTube Live Stream Auto-Notifier & Self-Promotion Monitor for Manjummel Bot."""
 
@@ -85,17 +98,13 @@ class YouTube(commands.Cog):
         self.yt_check_loop.cancel()
 
     def get_promo_channels(self, guild: discord.Guild):
-        """Finds all promotion / announcement channels in guild, especially under promotion categories."""
+        """Finds all promotion / announcement channels in guild, resolving Unicode small-caps."""
         channels = []
         for channel in guild.text_channels:
-            name_clean = channel.name.lower().replace("📻┆", "").replace("📢┆", "").replace("📌┆", "").replace("⚡┆", "").replace("-", "_")
-            cat_name = channel.category.name.lower() if channel.category else ""
+            name_clean = normalize_unicode_text(channel.name)
+            cat_name = normalize_unicode_text(channel.category.name) if channel.category else ""
 
-            # Match channels under Category (e.g. ⌬━━━━━━｜📢ᴘʀᴏᴍᴏᴛɪᴏɴ｜𒌇) or by channel name
-            if "promotion" in cat_name or "promo" in cat_name or "ᴘʀᴏᴍᴏᴛɪᴏɴ" in cat_name:
-                if channel not in channels:
-                    channels.append(channel)
-            elif any(kw in name_clean for kw in ["self_promotion", "selfpromotion", "promo", "promotion", "announcement"]):
+            if any(kw in cat_name for kw in ["promotion", "promo"]) or any(kw in name_clean for kw in ["self_promotion", "selfpromotion", "promo", "promotion", "announcement"]):
                 if channel not in channels:
                     channels.append(channel)
 
