@@ -2,9 +2,55 @@ import discord
 from discord.ext import commands
 import asyncio
 import random
+import re
+import aiohttp
 import yt_dlp
 
 yt_dlp.utils.bug_reports_message = lambda: ''
+
+async def fetch_spotify_tracks(url: str):
+    """Fetches track search terms from Spotify Track, Album, or Playlist URLs."""
+    tracks = []
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    async with aiohttp.ClientSession() as session:
+        if "track" in url:
+            oembed_url = f"https://open.spotify.com/oembed?url={url}"
+            try:
+                async with session.get(oembed_url, headers=headers) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        title = data.get("title", "")
+                        if title:
+                            tracks.append(title)
+            except Exception as e:
+                print(f"[Spotify Error] oEmbed fetch failed: {e}")
+        elif "playlist" in url or "album" in url:
+            try:
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status == 200:
+                        html = await resp.text()
+                        # Extract track names from meta tags or track listing JSON embedded in page
+                        titles = re.findall(r'<meta property="music:song" content="([^"]+)"/>', html)
+                        if not titles:
+                            og_titles = re.findall(r'<meta property="og:title" content="([^"]+)"/>', html)
+                            if og_titles:
+                                titles = og_titles
+                        if not titles:
+                            titles = re.findall(r'"name":"([^"]+)","track":', html)
+
+                        for t in titles:
+                            if t and t not in tracks:
+                                tracks.append(t)
+            except Exception as e:
+                print(f"[Spotify Error] Playlist/Album fetch failed: {e}")
+
+    if not tracks:
+        clean_name = url.split("?")[0].split("/")[-1].replace("-", " ")
+        tracks.append(clean_name)
+
+    return tracks
+
 
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
@@ -213,7 +259,7 @@ class Music(commands.Cog):
 
     @commands.command(name="play", aliases=["p"])
     async def play(self, ctx, *, search: str):
-        """Plays music from YouTube or adds it to the queue. Usage: !play <song name or URL>"""
+        """Plays music from YouTube or Spotify (Tracks, Playlists, Albums). Usage: !play <song, YT URL, or Spotify URL>"""
         if ctx.voice_client is None:
             connected = await self.join(ctx)
             if not connected:
@@ -221,8 +267,34 @@ class Music(commands.Cog):
 
         guild_id = ctx.guild.id
         queue = self.get_queue(guild_id)
-        
-        # Quick extract title for queue listing
+        search = search.strip("<>")
+
+        # ── Spotify Link Support ───────────────────────────
+        if "spotify.com" in search.lower():
+            async with ctx.typing():
+                msg = await ctx.send("🟢 Resolving Spotify link...")
+                tracks = await fetch_spotify_tracks(search)
+                if not tracks:
+                    return await msg.edit(content="❌ Could not extract tracks from Spotify link.")
+                
+                added_count = 0
+                for track_query in tracks:
+                    item = {"url": f"ytsearch:{track_query}", "title": track_query, "requester": ctx.author}
+                    queue.append(item)
+                    added_count += 1
+
+                embed = discord.Embed(
+                    title="🟢 Spotify Music Enqueued",
+                    description=f"Added **{added_count} track(s)** from Spotify to queue!\nFirst track: **{tracks[0]}**",
+                    color=discord.Color.green()
+                )
+                await msg.edit(content="", embed=embed)
+
+                if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+                    await self.play_next(ctx)
+                return
+
+        # ── YouTube / Regular Search ───────────────────────
         loop = self.bot.loop or asyncio.get_event_loop()
         try:
             info = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False, process=False))
@@ -245,6 +317,7 @@ class Music(commands.Cog):
             )
             embed.set_footer(text=f"Queue Position: #{len(queue)}")
             await ctx.send(embed=embed)
+
 
     @commands.command(name="skip", aliases=["s"])
     async def skip(self, ctx):
