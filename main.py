@@ -25,6 +25,8 @@ from discord.ext import commands
 from flask import Flask
 import config
 
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Configure logging without emoji encoding issues
 logging.basicConfig(
     level=logging.INFO,
