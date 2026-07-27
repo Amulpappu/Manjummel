@@ -1,0 +1,13 @@
+{
+    "ping_role": "family",
+    "youtubers": [
+        {
+            "handle": "@AMULPAPPU_001",
+            "channel_id": "UCIkCNsY2HDPAeAxL_I3hDNw",
+            "name": "AMULPAPPU_001",
+            "ping_enabled": true,
+            "url": "https://www.youtube.com/@AMULPAPPU_001",
+            "last_video_id": ""
+        }
+    ]
+}

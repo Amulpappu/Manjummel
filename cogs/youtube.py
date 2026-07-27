@@ -17,14 +17,13 @@ def load_youtubers():
                 return json.load(f)
         except Exception:
             pass
-    # Default configuration with user's YouTube channel @AMULPAPPU_001
     default_data = {
         "ping_role": "family",
         "youtubers": [
             {
                 "handle": "@AMULPAPPU_001",
                 "channel_id": "UCIkCNsY2HDPAeAxL_I3hDNw",
-                "name": "AMULPAPPU 001",
+                "name": "AMULPAPPU_001",
                 "ping_enabled": True,
                 "url": "https://www.youtube.com/@AMULPAPPU_001",
                 "last_video_id": ""
@@ -85,13 +84,15 @@ class YouTube(commands.Cog):
     def cog_unload(self):
         self.yt_check_loop.cancel()
 
-    def get_promo_channel(self, guild: discord.Guild):
-        """Finds self-promotion channel by name (fuzzy match)."""
+    def get_promo_channels(self, guild: discord.Guild):
+        """Finds all promotion / announcement channels in guild."""
+        channels = []
         for channel in guild.text_channels:
-            name_clean = channel.name.lower().replace("📻┆", "").replace("-", "_")
-            if "self_promotion" in name_clean or "selfpromotion" in name_clean or "promo" in name_clean:
-                return channel
-        return None
+            name_clean = channel.name.lower().replace("📻┆", "").replace("📢┆", "").replace("📌┆", "").replace("⚡┆", "").replace("-", "_")
+            if any(kw in name_clean for kw in ["self_promotion", "selfpromotion", "promo", "promotion", "announcement"]):
+                if channel not in channels:
+                    channels.append(channel)
+        return channels
 
     def get_ping_role(self, guild: discord.Guild):
         """Finds @family role in guild."""
@@ -112,7 +113,6 @@ class YouTube(commands.Cog):
             if not channel_id:
                 return await ctx.send(f"❌ Could not resolve YouTube Channel ID for `{handle_or_url}`. Please verify handle/URL.")
             
-            # Check if already added
             youtubers = self.data.get("youtubers", [])
             for y in youtubers:
                 if y.get("channel_id") == channel_id:
@@ -131,7 +131,7 @@ class YouTube(commands.Cog):
             self.data["youtubers"] = youtubers
             save_youtubers(self.data)
 
-            await ctx.send(f"✅ Added YouTuber **{name}** (`{channel_id}`)! Will auto-ping `@family` in `#📻┆ꜱᴇʟꜰ-ᴘʀᴏᴍᴏᴛɪᴏɴ` when live!")
+            await ctx.send(f"✅ Added YouTuber **{name}** (`{channel_id}`)! Will auto-ping `@family` in `#self-promotion` when live!")
 
     @commands.command(name="listyoutubers", aliases=["listytubers"])
     async def list_youtubers(self, ctx):
@@ -145,10 +145,9 @@ class YouTube(commands.Cog):
             color=discord.Color.red()
         )
         for idx, y in enumerate(youtubers, 1):
-            status = "🟢 Ping @family Enabled" if y.get("ping_enabled", True) else "⚪ Ping Disabled"
             embed.add_field(
                 name=f"{idx}. {y.get('name')} ({y.get('handle')})",
-                value=f"**Channel ID:** `{y.get('channel_id')}`\n**Status:** {status}\n[Channel Link]({y.get('url')})",
+                value=f"**Channel ID:** `{y.get('channel_id')}`\n**Status:** 🟢 Auto-Pings @family\n[Channel Link]({y.get('url')})",
                 inline=False
             )
         await ctx.send(embed=embed)
@@ -159,9 +158,8 @@ class YouTube(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        promo_ch = self.get_promo_channel(message.guild)
-        if promo_ch and message.channel.id == promo_ch.id:
-            # Check if message contains YouTube link
+        promo_channels = self.get_promo_channels(message.guild)
+        if any(message.channel.id == ch.id for ch in promo_channels):
             urls = re.findall(r'(https?://(?:www\.)?(?:youtube\.com|youtu\.be)/\S+)', message.content)
             if urls:
                 target_url = urls[0]
@@ -169,7 +167,7 @@ class YouTube(commands.Cog):
                 matched_yt = None
                 video_title = "Live Stream / Video"
 
-                # 1. Fetch YouTube oEmbed to get channel author_name & author_url
+                # Fetch YouTube oEmbed to get channel details
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
                 }
@@ -195,7 +193,6 @@ class YouTube(commands.Cog):
                 except Exception as e:
                     print(f"[YouTube oEmbed Error] {e}")
 
-                # 2. Fallback: Match if message author is Server Owner / Admin or matches handle
                 if not matched_yt:
                     is_admin_or_owner = message.author.id == message.guild.owner_id or message.author.guild_permissions.administrator
                     for y in youtubers:
@@ -205,14 +202,12 @@ class YouTube(commands.Cog):
                             matched_yt = y
                             break
                     if not matched_yt and is_admin_or_owner and youtubers:
-                        # Default to first registered YouTuber if posted by Server Owner/Admin
                         matched_yt = youtubers[0]
 
-                # 3. If REGISTERED YouTuber or Admin: Post @family ping announcement (Do NOT delete raw message)
                 if matched_yt:
                     ping_role = self.get_ping_role(message.guild)
                     role_mention = ping_role.mention if ping_role else "@family"
-                    streamer_name = matched_yt.get('name', 'AMULPAPPU 001')
+                    streamer_name = matched_yt.get('name', 'AMULPAPPU_001')
 
                     content_text = (
                         f"🔴 {role_mention} **{streamer_name} IS LIVE!**\n"
@@ -231,13 +226,12 @@ class YouTube(commands.Cog):
 
                     await message.channel.send(content=content_text, embed=embed)
                 else:
-                    # UNREGISTERED USER: Allow raw link in self-promotion, NO DELETE, NO PING @family!
                     print(f"[Self-Promo] Unregistered live link posted by {message.author.display_name} - No @family ping.")
 
-    # ── Automated RSS Stream Check Loop ────────────────────────
-    @tasks.loop(seconds=60)
+    # ── High-Speed Automated RSS Stream Check Loop (15s) ───────
+    @tasks.loop(seconds=15)
     async def yt_check_loop(self):
-        """Periodically checks YouTube RSS feeds for registered channels."""
+        """Periodically checks YouTube RSS feeds for registered channels every 15 seconds."""
         await self.bot.wait_until_ready()
         youtubers = self.data.get("youtubers", [])
         if not youtubers:
@@ -268,16 +262,17 @@ class YouTube(commands.Cog):
 
                         last_id = y.get("last_video_id", "")
                         if video_id and video_id != last_id:
+                            # Update last_video_id in memory and disk
                             y["last_video_id"] = video_id
                             save_youtubers(self.data)
 
-                            # Announce live stream / video to all guilds
+                            # Announce live stream / video to all guilds & promo channels
                             for guild in self.bot.guilds:
-                                promo_ch = self.get_promo_channel(guild)
-                                if promo_ch:
+                                promo_channels = self.get_promo_channels(guild)
+                                for promo_ch in promo_channels:
                                     ping_role = self.get_ping_role(guild)
-                                    role_str = ping_role.mention if (ping_role and y.get("ping_enabled", True)) else "@family"
-                                    streamer_name = y.get('name', 'AMULPAPPU 001')
+                                    role_str = ping_role.mention if ping_role else "@family"
+                                    streamer_name = y.get('name', 'AMULPAPPU_001')
 
                                     content_text = (
                                         f"🔴 {role_str} **{streamer_name} IS LIVE!**\n"
