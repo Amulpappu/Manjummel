@@ -66,7 +66,14 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0',
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['android', 'web'],
+            'skip': ['js']
+        }
+    }
 }
+
 
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -99,8 +106,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 'quiet': True,
                 'no_warnings': True,
                 'default_search': 'ytsearch',
-                'source_address': '0.0.0.0'
+                'source_address': '0.0.0.0',
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'skip': ['js']
+                    }
+                }
             }
+
             fallback_ytdl = yt_dlp.YoutubeDL(fallback_opts)
             data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(url, download=not stream))
 
