@@ -1,14 +1,30 @@
+import os
+import sys
+import threading
 import asyncio
 import logging
 import discord
 from discord.ext import commands
+from flask import Flask
 import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("ManjummelBot")
 
-# Configure Intents (All intents enabled for Moderation, Invites & Voice)
+# ── Render HTTP Port Binding Web Server ────────────────────
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "<h1>🤖 Manjummel Bot is Online 24/7!</h1><p>Status: Active & Operational</p>"
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 5000))
+    logger.info(f"🌐 Starting Web Server for Render Port Binding on 0.0.0.0:{port}...")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+
+# ── Discord Bot Setup ─────────────────────────────────────
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -30,7 +46,6 @@ INITIAL_COGS = [
     "cogs.moderation",
     "cogs.logging",
 ]
-
 
 @bot.event
 async def on_ready():
@@ -60,6 +75,10 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        # Start background web server to satisfy Render Web Service port binding
+        web_thread = threading.Thread(target=run_web_server, daemon=True)
+        web_thread.start()
+
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Bot execution interrupted by user.")
