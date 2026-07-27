@@ -208,21 +208,34 @@ class YouTube(commands.Cog):
                         # Default to first registered YouTuber if posted by Server Owner/Admin
                         matched_yt = youtubers[0]
 
-                # 3. If REGISTERED YouTuber or Admin: Tag @family!
+                # 3. If REGISTERED YouTuber or Admin: Delete user message & post official bot live alert!
                 if matched_yt and matched_yt.get("ping_enabled", True):
+                    # Delete the user's raw message so only the bot announcement remains
+                    try:
+                        await message.delete()
+                    except Exception as e:
+                        print(f"[Self-Promo] Could not delete user message: {e}")
+
                     ping_role = self.get_ping_role(message.guild)
                     role_mention = ping_role.mention if ping_role else "@family"
+                    streamer_name = matched_yt.get('name', 'AMULPAPPU 001')
+
+                    content_text = (
+                        f"🔴 {role_mention} **{streamer_name} IS LIVE!**\n"
+                        f"🎬 **[{video_title}]({target_url})**\n"
+                        f"👉 **[Click Here to Watch Stream]({target_url})**"
+                    )
 
                     embed = discord.Embed(
-                        title=f"🔴 {matched_yt.get('name')} is LIVE on YouTube!",
-                        description=f"🎬 **[{video_title}]({target_url})**\n\n{role_mention} **{matched_yt.get('name')}** just shared a live stream in {promo_ch.mention}!\n\n👉 **[Click Here to Watch Stream]({target_url})**",
+                        title=f"🔴 {streamer_name} IS LIVE!",
+                        description=f"🎬 **[{video_title}]({target_url})**\n\n👉 **[Click Here to Watch Stream]({target_url})**",
                         color=discord.Color.red(),
                         url=target_url
                     )
                     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
-                    embed.set_footer(text="Registered VIP Streamer Alert • Manjummel Bot")
+                    embed.set_footer(text="Manjummel Live Stream Alert", icon_url="https://www.youtube.com/s/desktop/f71fb147/img/favicon.ico")
 
-                    await message.channel.send(content=f"🔴 {role_mention} **{matched_yt.get('name')} IS LIVE!**", embed=embed)
+                    await message.channel.send(content=content_text, embed=embed)
                 else:
                     # NOT REGISTERED: Allow link in self-promotion, but NO PING @family!
                     print(f"[Self-Promo] Unregistered live link posted by {message.author.display_name} - No @family ping.")
