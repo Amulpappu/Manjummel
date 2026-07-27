@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manjummel Bot - Central Dashboard Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #090d16;
+            --panel: #111827;
+            --accent-green: #00e678;
+            --accent-red: #ef4444;
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f3f4f6;
+            --text-dim: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .hub-container {
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00e678, #00b4d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 230, 120, 0.15);
+            color: var(--accent-green);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid rgba(0, 230, 120, 0.3);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .dashboard-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+        }
+
+        .card-welcome:hover {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 25px rgba(0, 230, 120, 0.3);
+        }
+
+        .card-yt:hover {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.3);
+        }
+
+        .card-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .icon-green {
+            color: var(--accent-green);
+        }
+
+        .icon-red {
+            color: var(--accent-red);
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+        }
+
+        .card-desc {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-launch {
+            width: 100%;
+            padding: 0.85rem;
+            border-radius: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+
+        .btn-welcome {
+            background: linear-gradient(135deg, #00e678, #00b4d8);
+            color: #090d16;
+        }
+
+        .btn-yt {
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hub-container">
+        <h1 class="hero-title">Manjummel Bot Central Hub 🤖</h1>
+        <div class="status-badge">
+            <i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> Bot Online 24/7 & Operational
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Welcome Cards Dashboard -->
+            <a href="/welcome" class="dashboard-card card-welcome">
+                <div class="card-icon icon-green">
+                    <i class="fa-solid fa-hand-wave"></i>
+                </div>
+                <div class="card-title">Welcome Cards Dashboard</div>
+                <div class="card-desc">Customize Koya-style welcome text, live Discord card preview, colors, rules channel, and auto-roles.</div>
+                <div class="btn-launch btn-welcome">
+                    <i class="fa-solid fa-arrow-right"></i> Open Welcome Dashboard
+                </div>
+            </a>
+
+            <!-- YouTuber Stream Manager Dashboard -->
+            <a href="/youtubers" class="dashboard-card card-yt">
+                <div class="card-icon icon-red">
+                    <i class="fa-brands fa-youtube"></i>
+                </div>
+                <div class="card-title">YouTuber Stream Manager</div>
+                <div class="card-desc">Register YouTubers to auto-ping @family in #self-promotion when live streams start.</div>
+                <div class="btn-launch btn-yt">
+                    <i class="fa-solid fa-arrow-right"></i> Open Stream Dashboard
+                </div>
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

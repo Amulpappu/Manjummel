@@ -41,16 +41,7 @@ app = Flask(__name__, template_folder="templates")
 
 @app.route("/")
 def home():
-    return """
-    <div style="font-family: Arial, sans-serif; background: #0b0f19; color: #fff; padding: 3rem; text-align: center;">
-        <h1>Manjummel Bot is Online 24/7! 🤖</h1>
-        <p>Status: Active & Operational</p>
-        <br>
-        <a href="/youtubers" style="display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-            📻 Open YouTuber Stream Manager Dashboard
-        </a>
-    </div>
-    """
+    return render_template("index.html")
 
 @app.route("/youtubers")
 def youtubers_dashboard():
