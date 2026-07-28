@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -257,9 +258,10 @@ class Welcome(commands.Cog):
 
         await channel.send(content=msg_content)
 
-    @commands.command(name="testwelcome")
+    @commands.hybrid_command(name="testwelcome", description="Sends a test Koya-style welcome card message to the welcome channel.")
     @commands.has_permissions(administrator=True)
-    async def test_welcome(self, ctx, member: discord.Member = None):
+    @app_commands.describe(member="Optional member to send the test welcome card for")
+    async def test_welcome(self, ctx: commands.Context, member: discord.Member = None):
         """Sends test Koya-style welcome card message to the welcome channel."""
         target = member or ctx.author
         channel = self.get_welcome_channel(ctx.guild)

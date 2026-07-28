@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import asyncio
 import json
@@ -105,9 +106,10 @@ class InviteTracker(commands.Cog):
                 )
                 await channel.send(embed=embed)
 
-    @commands.command(name="invites")
-    async def get_invites(self, ctx, member: discord.Member = None):
-        """Displays invite statistics for a user. Usage: !invites [@user]"""
+    @commands.hybrid_command(name="invites", description="Displays invite statistics for a user.")
+    @app_commands.describe(member="Optional member to check invite stats for")
+    async def get_invites(self, ctx: commands.Context, member: discord.Member = None):
+        """Displays invite statistics for a user."""
         target = member or ctx.author
         stats = self.invite_data.get(str(target.id), {"total": 0, "real": 0, "fake": 0, "left": 0})
         
@@ -121,8 +123,8 @@ class InviteTracker(commands.Cog):
         embed.add_field(name="Left Server", value=f"`{stats['left']}`", inline=True)
         await ctx.send(embed=embed)
 
-    @commands.command(name="invitesleaderboard", aliases=["topinvites"])
-    async def invites_leaderboard(self, ctx):
+    @commands.hybrid_command(name="invitesleaderboard", aliases=["topinvites"], description="Displays top inviters in the server.")
+    async def invites_leaderboard(self, ctx: commands.Context):
         """Displays top inviters in the server."""
         if not self.invite_data:
             return await ctx.send("📩 No invite data recorded yet.")

@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import asyncio
 import yt_dlp
@@ -309,22 +310,25 @@ class Music(commands.Cog):
                 await ctx.send(f"❌ Error loading track `{track_info.get('title')}`: {e}")
                 await self.play_next(ctx)
 
-    @commands.command(name="join")
-    async def join(self, ctx):
+    @commands.hybrid_command(name="join", description="Joins your current voice channel.")
+    async def join(self, ctx: commands.Context):
         """Joins the user's voice channel."""
         if not ctx.author.voice:
             await ctx.send("❌ You are not connected to a voice channel.")
             return False
         channel = ctx.author.voice.channel
         if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
+            await ctx.voice_client.move_to(channel)
+            await ctx.send(f"🔊 Moved to **{channel.name}**")
+            return True
         await channel.connect()
         await ctx.send(f"🔊 Joined **{channel.name}**")
         return True
 
-    @commands.command(name="play", aliases=["p"])
-    async def play(self, ctx, *, search: str):
-        """Plays music from YouTube or Spotify (Tracks, Playlists, Albums). Usage: !play <song, YT URL, or Spotify URL>"""
+    @commands.hybrid_command(name="play", aliases=["p"], description="Plays music from YouTube or Spotify.")
+    @app_commands.describe(search="Song name, YouTube URL, or Spotify playlist/track URL")
+    async def play(self, ctx: commands.Context, *, search: str):
+        """Plays music from YouTube or Spotify (Tracks, Playlists, Albums). Usage: /play <song or URL>"""
         if ctx.voice_client is None:
             connected = await self.join(ctx)
             if not connected:
@@ -336,28 +340,29 @@ class Music(commands.Cog):
 
         # ── Spotify Link Support ───────────────────────────
         if "spotify.com" in search.lower():
-            async with ctx.typing():
-                msg = await ctx.send("🟢 Resolving Spotify link...")
-                tracks = await fetch_spotify_tracks(search)
-                if not tracks:
-                    return await msg.edit(content="❌ Could not extract tracks from Spotify link. (Please ensure playlist/track is public or try searching by song name!)")
-                
-                added_count = 0
-                for track_query in tracks:
-                    item = {"url": f"ytsearch:{track_query}", "title": track_query, "requester": ctx.author}
-                    queue.append(item)
-                    added_count += 1
+            if ctx.interaction:
+                await ctx.interaction.response.defer()
+            msg = await ctx.send("🟢 Resolving Spotify link...")
+            tracks = await fetch_spotify_tracks(search)
+            if not tracks:
+                return await msg.edit(content="❌ Could not extract tracks from Spotify link. (Please ensure playlist/track is public!)")
+            
+            added_count = 0
+            for track_query in tracks:
+                item = {"url": f"ytsearch:{track_query}", "title": track_query, "requester": ctx.author}
+                queue.append(item)
+                added_count += 1
 
-                embed = discord.Embed(
-                    title="🟢 Spotify Music Enqueued",
-                    description=f"Added **{added_count} track(s)** from Spotify to queue!\nFirst track: **{tracks[0]}**",
-                    color=discord.Color.green()
-                )
-                await msg.edit(content="", embed=embed)
+            embed = discord.Embed(
+                title="🟢 Spotify Music Enqueued",
+                description=f"Added **{added_count} track(s)** from Spotify to queue!\nFirst track: **{tracks[0]}**",
+                color=discord.Color.green()
+            )
+            await msg.edit(content="", embed=embed)
 
-                if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
-                    await self.play_next(ctx)
-                return
+            if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+                await self.play_next(ctx)
+            return
 
         # ── YouTube / Regular Search ───────────────────────
         loop = self.bot.loop or asyncio.get_event_loop()
@@ -382,15 +387,17 @@ class Music(commands.Cog):
             )
             await ctx.send(embed=embed)
 
-    @commands.command(name="leave", aliases=["dc", "disconnect"])
-    async def leave(self, ctx):
+    @commands.hybrid_command(name="leave", aliases=["dc", "disconnect"], description="Stops music and leaves the voice channel.")
+    async def leave(self, ctx: commands.Context):
         """Stops music and disconnects the bot from the voice channel."""
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
             await ctx.send("👋 Disconnected from voice channel.")
+        else:
+            await ctx.send("❌ I am not in a voice channel.")
 
-    @commands.command(name="skip", aliases=["s"])
-    async def skip(self, ctx):
+    @commands.hybrid_command(name="skip", aliases=["s"], description="Skips the currently playing track.")
+    async def skip(self, ctx: commands.Context):
         """Skips the currently playing song."""
         if ctx.voice_client and ctx.voice_client.is_playing():
             ctx.voice_client.stop()
@@ -398,8 +405,8 @@ class Music(commands.Cog):
         else:
             await ctx.send("❌ Nothing is currently playing.")
 
-    @commands.command(name="stop")
-    async def stop(self, ctx):
+    @commands.hybrid_command(name="stop", description="Stops playback and clears the queue.")
+    async def stop(self, ctx: commands.Context):
         """Stops the music and clears the queue."""
         guild_id = ctx.guild.id
         self.queues[guild_id] = []
@@ -407,8 +414,8 @@ class Music(commands.Cog):
             ctx.voice_client.stop()
         await ctx.send("🛑 Stopped playback and cleared queue.")
 
-    @commands.command(name="queue", aliases=["q"])
-    async def queue(self, ctx):
+    @commands.hybrid_command(name="queue", aliases=["q"], description="Displays the current music queue.")
+    async def queue(self, ctx: commands.Context):
         """Displays the current music queue."""
         guild_id = ctx.guild.id
         queue = self.get_queue(guild_id)

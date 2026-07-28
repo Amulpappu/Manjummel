@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import time
 import config
@@ -44,14 +45,14 @@ class General(commands.Cog):
                 )
                 await channel.send(embed=embed)
 
-    @commands.command(name="ping")
-    async def ping(self, ctx):
+    @commands.hybrid_command(name="ping", description="Checks the bot's response time.")
+    async def ping(self, ctx: commands.Context):
         """Checks the bot's response time."""
         latency = round(self.bot.latency * 1000)
         await ctx.send(f"🏓 Pong! Latency: `{latency}ms`")
 
-    @commands.command(name="botinfo")
-    async def botinfo(self, ctx):
+    @commands.hybrid_command(name="botinfo", description="Displays information about Manjummel Bot.")
+    async def botinfo(self, ctx: commands.Context):
         """Displays information about Manjummel Bot."""
         uptime_seconds = int(time.time() - self.start_time)
         hours, remainder = divmod(uptime_seconds, 3600)
@@ -68,10 +69,11 @@ class General(commands.Cog):
         embed.add_field(name="Servers", value=str(len(self.bot.guilds)), inline=True)
         await ctx.send(embed=embed)
 
-    @commands.command(name="addrole")
+    @commands.hybrid_command(name="addrole", description="Assigns a role to a member.")
     @commands.has_permissions(manage_roles=True)
-    async def add_role(self, ctx, member: discord.Member, *, role_name: str):
-        """Assigns a role to a member. Usage: !addrole @user RoleName"""
+    @app_commands.describe(member="The member to give the role to", role_name="The exact name of the role")
+    async def add_role(self, ctx: commands.Context, member: discord.Member, role_name: str):
+        """Assigns a role to a member."""
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if not role:
             return await ctx.send(f"❌ Role `{role_name}` not found in this server.")
@@ -81,10 +83,11 @@ class General(commands.Cog):
         except discord.Forbidden:
             await ctx.send("❌ I do not have permission to assign that role.")
 
-    @commands.command(name="removerole")
+    @commands.hybrid_command(name="removerole", description="Removes a role from a member.")
     @commands.has_permissions(manage_roles=True)
-    async def remove_role(self, ctx, member: discord.Member, *, role_name: str):
-        """Removes a role from a member. Usage: !removerole @user RoleName"""
+    @app_commands.describe(member="The member to remove the role from", role_name="The exact name of the role")
+    async def remove_role(self, ctx: commands.Context, member: discord.Member, role_name: str):
+        """Removes a role from a member."""
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if not role:
             return await ctx.send(f"❌ Role `{role_name}` not found in this server.")

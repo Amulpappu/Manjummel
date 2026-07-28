@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import json
 import os
@@ -67,10 +68,11 @@ class Moderation(commands.Cog):
             await channel.send(embed=embed)
 
     # ── Moderation Commands ───────────────────────────────────
-    @commands.command(name="warn")
+    @commands.hybrid_command(name="warn", description="Warns a member in the server.")
     @commands.has_permissions(manage_messages=True)
-    async def warn_user(self, ctx, member: discord.Member, *, reason: str = "No reason provided"):
-        """Warns a member. Usage: !warn @user Spamming chat"""
+    @app_commands.describe(member="The member to warn", reason="Reason for the warning")
+    async def warn_user(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
+        """Warns a member. Usage: /warn @user Spamming chat"""
         user_id_str = str(member.id)
         if user_id_str not in self.warnings:
             self.warnings[user_id_str] = []
@@ -93,9 +95,10 @@ class Moderation(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    @commands.command(name="warns")
-    async def get_warns(self, ctx, member: discord.Member = None):
-        """Displays warning history for a user. Usage: !warns [@user]"""
+    @commands.hybrid_command(name="warns", description="Displays warning history for a user.")
+    @app_commands.describe(member="Optional member to check warnings for")
+    async def get_warns(self, ctx: commands.Context, member: discord.Member = None):
+        """Displays warning history for a user."""
         target = member or ctx.author
         user_id_str = str(target.id)
         user_warns = self.warnings.get(user_id_str, [])
@@ -104,7 +107,7 @@ class Moderation(commands.Cog):
             return await ctx.send(f"✅ {target.display_name} has clean records (0 warnings).")
 
         embed = discord.Embed(
-            title="⚠️ Warning History for {target.display_name}",
+            title=f"⚠️ Warning History for {target.display_name}",
             color=discord.Color.gold()
         )
         for idx, w in enumerate(user_warns, 1):
@@ -115,9 +118,10 @@ class Moderation(commands.Cog):
             )
         await ctx.send(embed=embed)
 
-    @commands.command(name="clearwarns")
+    @commands.hybrid_command(name="clearwarns", description="Clears all warnings for a user.")
     @commands.has_permissions(manage_messages=True)
-    async def clear_warns(self, ctx, member: discord.Member):
+    @app_commands.describe(member="The member to clear warnings for")
+    async def clear_warns(self, ctx: commands.Context, member: discord.Member):
         """Clears all warnings for a user."""
         user_id_str = str(member.id)
         if user_id_str in self.warnings:
@@ -125,31 +129,39 @@ class Moderation(commands.Cog):
             self.save_warnings()
         await ctx.send(f"🧹 Cleared all warnings for {member.mention}.")
 
-    @commands.command(name="kick")
+    @commands.hybrid_command(name="kick", description="Kicks a member from the server.")
     @commands.has_permissions(kick_members=True)
-    async def kick_user(self, ctx, member: discord.Member, *, reason: str = "No reason provided"):
+    @app_commands.describe(member="The member to kick", reason="Reason for kicking")
+    async def kick_user(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         """Kicks a member from the server."""
         await member.kick(reason=reason)
         await ctx.send(f"👢 Kicked **{member.display_name}** | Reason: {reason}")
 
-    @commands.command(name="ban")
+    @commands.hybrid_command(name="ban", description="Bans a member from the server.")
     @commands.has_permissions(ban_members=True)
-    async def ban_user(self, ctx, member: discord.Member, *, reason: str = "No reason provided"):
+    @app_commands.describe(member="The member to ban", reason="Reason for banning")
+    async def ban_user(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         """Bans a member from the server."""
         await member.ban(reason=reason)
         await ctx.send(f"🔨 Banned **{member.display_name}** | Reason: {reason}")
 
-    @commands.command(name="purge", aliases=["clear"])
+    @commands.hybrid_command(name="purge", aliases=["clear"], description="Deletes multiple messages in channel.")
     @commands.has_permissions(manage_messages=True)
-    async def purge_messages(self, ctx, amount: int = 10):
-        """Deletes multiple messages in channel. Usage: !purge 20"""
-        deleted = await ctx.channel.purge(limit=amount + 1)
-        msg = await ctx.send(f"🧹 Deleted `{len(deleted)-1}` messages.")
-        await msg.delete(delay=3)
+    @app_commands.describe(amount="Number of messages to delete")
+    async def purge_messages(self, ctx: commands.Context, amount: int = 10):
+        """Deletes multiple messages in channel."""
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            deleted = await ctx.channel.purge(limit=amount)
+            await ctx.interaction.followup.send(f"🧹 Deleted `{len(deleted)}` messages.", ephemeral=True)
+        else:
+            deleted = await ctx.channel.purge(limit=amount + 1)
+            msg = await ctx.send(f"🧹 Deleted `{len(deleted)-1}` messages.")
+            await msg.delete(delay=3)
 
     # ── StatBot Analytics Commands ───────────────────────────
-    @commands.command(name="serverinfo", aliases=["sinfo"])
-    async def server_info(self, ctx):
+    @commands.hybrid_command(name="serverinfo", aliases=["sinfo"], description="Displays rich server statistics.")
+    async def server_info(self, ctx: commands.Context):
         """Displays rich StatBot-style server statistics."""
         guild = ctx.guild
         embed = discord.Embed(
@@ -169,8 +181,9 @@ class Moderation(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="userinfo", aliases=["uinfo"])
-    async def user_info(self, ctx, member: discord.Member = None):
+    @commands.hybrid_command(name="userinfo", aliases=["uinfo"], description="Displays detailed user profile information.")
+    @app_commands.describe(member="Optional member to view info for")
+    async def user_info(self, ctx: commands.Context, member: discord.Member = None):
         """Displays detailed user profile information."""
         target = member or ctx.author
         roles = [role.mention for role in target.roles if role.name != "@everyone"]

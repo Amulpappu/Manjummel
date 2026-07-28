@@ -215,10 +215,17 @@ INITIAL_COGS = [
 async def on_ready():
     logger.info(f"[Bot] LOGGED IN SUCCESSFULLY as {bot.user} (ID: {bot.user.id})")
     logger.info(f"[Bot] Connected to {len(bot.guilds)} server(s).")
+
+    try:
+        synced = await bot.tree.sync()
+        logger.info(f"[Slash Commands] Successfully synced {len(synced)} slash command(s) globally with Discord Gateway.")
+    except Exception as e:
+        logger.error(f"[Slash Commands Sync Error] {e}")
+
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name=f"{config.COMMAND_PREFIX}help | Manjummel Bot"
+            name=f"/play | /help | Manjummel Bot"
         )
     )
 
