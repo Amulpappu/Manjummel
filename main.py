@@ -216,11 +216,19 @@ async def on_ready():
     logger.info(f"[Bot] LOGGED IN SUCCESSFULLY as {bot.user} (ID: {bot.user.id})")
     logger.info(f"[Bot] Connected to {len(bot.guilds)} server(s).")
 
+    for guild in bot.guilds:
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
+            logger.info(f"[Slash Commands] Synced {len(synced)} slash command(s) instantly to guild: {guild.name} ({guild.id})")
+        except Exception as e:
+            logger.error(f"[Slash Commands Guild Sync Error] Guild {guild.id}: {e}")
+
     try:
         synced = await bot.tree.sync()
         logger.info(f"[Slash Commands] Successfully synced {len(synced)} slash command(s) globally with Discord Gateway.")
     except Exception as e:
-        logger.error(f"[Slash Commands Sync Error] {e}")
+        logger.error(f"[Slash Commands Global Sync Error] {e}")
 
     await bot.change_presence(
         activity=discord.Activity(
@@ -228,6 +236,17 @@ async def on_ready():
             name=f"/play | /help | Manjummel Bot"
         )
     )
+
+@bot.command(name="sync")
+async def sync_commands(ctx):
+    """Instantly syncs all slash commands to the current server. Usage: !sync"""
+    msg = await ctx.send("🔄 Syncing slash commands to this server...")
+    try:
+        bot.tree.copy_global_to(guild=ctx.guild)
+        synced = await bot.tree.sync(guild=ctx.guild)
+        await msg.edit(content=f"✅ Successfully synced **{len(synced)}** slash commands (`/play`, `/love`, `/flames`, `/avatar`, etc.) to **{ctx.guild.name}**!")
+    except Exception as e:
+        await msg.edit(content=f"❌ Sync failed: {e}")
 
 async def main():
     async with bot:
