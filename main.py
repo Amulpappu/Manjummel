@@ -147,20 +147,22 @@ def api_update_welcome():
 @app.route("/api/welcome/test", methods=["POST"])
 def api_test_welcome():
     if not bot.loop or not bot.is_ready():
-        return jsonify({"success": False, "message": "Bot is starting up. Please wait a few seconds and try again."})
+        return jsonify({"success": False, "message": "Bot is starting up or connecting to Discord. Please wait a few seconds and try again."})
 
     async def trigger_test():
-        welcome_cog = bot.get_cog("Welcome")
-        if not welcome_cog:
-            return False, "Welcome module is not loaded."
+        from cogs.welcome import Welcome
+        welcome_cog = bot.get_cog("Welcome") or Welcome(bot)
 
         if not bot.guilds:
-            return False, "Bot is not connected to any server."
+            return False, "Bot is not connected to any server yet."
 
         guild = bot.guilds[0]
         channel = welcome_cog.get_welcome_channel(guild)
         if not channel:
-            return False, "Welcome channel not found."
+            channel = guild.system_channel or (guild.text_channels[0] if guild.text_channels else None)
+
+        if not channel:
+            return False, "No text channel found in server to send welcome card."
 
         member = guild.me
         if guild.members:
@@ -175,7 +177,7 @@ def api_test_welcome():
 
     try:
         future = asyncio.run_coroutine_threadsafe(trigger_test(), bot.loop)
-        success, message = future.result(timeout=10)
+        success, message = future.result(timeout=12)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logger.error(f"[API Test Welcome Error] {e}")
