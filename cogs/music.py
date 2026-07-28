@@ -180,33 +180,51 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = None
         stream_url = None
 
-        # Strategy 1: For YouTube links, fetch title via oEmbed and search via ytsearch1:
+        # Resolve exact song title
+        song_title = ""
         if "youtube.com" in cleaned_url or "youtu.be" in cleaned_url:
-            try:
-                fetched_title = await fetch_video_title_oembed(cleaned_url)
-                search_term = fetched_title if fetched_title else cleaned_url
-                query = f"ytsearch1:{search_term}"
-                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=not stream))
-                stream_url, data = extract_stream_url(data)
-            except Exception as e:
-                print(f"[YTDL oEmbed Search Error] {e}")
+            song_title = await fetch_video_title_oembed(cleaned_url)
+        else:
+            song_title = cleaned_url
 
-        # Strategy 2: Direct extraction fallback if not YouTube link or if Strategy 1 failed
+        # Provider 1: Flavia Engine (SoundCloud High-Speed Cloud Stream)
+        if song_title:
+            try:
+                sc_opts = {'format': 'bestaudio/best', 'quiet': True, 'no_warnings': True}
+                ytdl_sc = yt_dlp.YoutubeDL(sc_opts)
+                sc_data = await loop.run_in_executor(None, lambda: ytdl_sc.extract_info(f"scsearch1:{song_title}", download=not stream))
+                stream_url, data = extract_stream_url(sc_data)
+                if stream_url:
+                    print(f"[Flavia Music Engine] Provider 1 (SoundCloud) loaded stream for: {song_title}")
+            except Exception as e:
+                print(f"[Flavia Music Engine] Provider 1 Error: {e}")
+
+        # Provider 2: YouTube Search Engine (mweb/android client fallback)
+        if not stream_url:
+            try:
+                yt_opts = {
+                    'format': 'bestaudio/best',
+                    'quiet': True,
+                    'no_warnings': True,
+                    'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'ios']}}
+                }
+                ytdl_yt = yt_dlp.YoutubeDL(yt_opts)
+                yt_query = f"ytsearch1:{song_title if song_title else cleaned_url}"
+                yt_data = await loop.run_in_executor(None, lambda: ytdl_yt.extract_info(yt_query, download=not stream))
+                stream_url, data = extract_stream_url(yt_data)
+                if stream_url:
+                    print(f"[Flavia Music Engine] Provider 2 (YouTube Search) loaded stream for: {yt_query}")
+            except Exception as e:
+                print(f"[Flavia Music Engine] Provider 2 Error: {e}")
+
+        # Provider 3: Direct Link Extraction Fallback
         if not stream_url:
             try:
                 target_url = cleaned_url if (cleaned_url.startswith("ytsearch:") or "youtube.com" in cleaned_url or "youtu.be" in cleaned_url) else f"ytsearch:{cleaned_url}"
                 data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
                 stream_url, data = extract_stream_url(data)
             except Exception as e:
-                print(f"[YTDL Direct Extraction Error] {e}")
-
-        # Strategy 3: Last-resort search
-        if not stream_url:
-            try:
-                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch1:{cleaned_url}", download=not stream))
-                stream_url, data = extract_stream_url(data)
-            except Exception:
-                pass
+                print(f"[Flavia Music Engine] Provider 3 Error: {e}")
 
         if not stream_url or not data:
             raise Exception("Could not extract video stream from YouTube.")
