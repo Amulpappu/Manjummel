@@ -113,6 +113,23 @@ async def generate_welcome_card_image(member: discord.Member, config_data: dict,
     output.seek(0)
     return output
 
+UNICODE_MAP = {
+    'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ᴇ': 'e', 'ꜰ': 'f', 'ɢ': 'g', 'ʜ': 'h',
+    'ɪ': 'i', 'ᴊ': 'j', 'ᴋ': 'k', 'ʟ': 'l', 'ᴍ': 'm', 'ɴ': 'n', 'ᴏ': 'o', 'ᴘ': 'p',
+    'ǫ': 'q', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'x': 'x',
+    'ʏ': 'y', 'ᴢ': 'z', '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5',
+    '6': '6', '7': '7', '8': '8', '9': '9'
+}
+
+def normalize_unicode_text(text: str) -> str:
+    res = []
+    for char in text.lower():
+        if char in UNICODE_MAP:
+            res.append(UNICODE_MAP[char])
+        else:
+            res.append(char)
+    return "".join(res)
+
 class Welcome(commands.Cog):
     """Koya-Style Welcome Cards & Custom Web Dashboard Manager for Manjummel Bot."""
 
@@ -121,12 +138,16 @@ class Welcome(commands.Cog):
         self.config_data = load_welcome_config()
 
     def get_welcome_channel(self, guild: discord.Guild):
-        """Finds channel matching welcome_config channel name or #welcome / system channel."""
+        """Finds channel matching welcome_config channel name or #welcome / #🙏┆ᴡᴇʟᴄᴏᴍᴇ."""
         cfg = load_welcome_config()
-        target_name = cfg.get("channel_name", "welcome").lower()
+        target_raw = cfg.get("channel_name", "welcome")
+        target_norm = normalize_unicode_text(target_raw)
 
         for channel in guild.text_channels:
-            if target_name in channel.name.lower() or "welcome" in channel.name.lower() or "welcom" in channel.name.lower():
+            ch_raw = channel.name
+            ch_norm = normalize_unicode_text(ch_raw)
+
+            if target_raw.lower() in ch_raw.lower() or target_norm in ch_norm or "welcome" in ch_norm or "welcom" in ch_norm:
                 return channel
 
         if guild.system_channel:

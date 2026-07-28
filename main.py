@@ -110,7 +110,7 @@ def load_welcome_config():
             pass
     return {
         "enabled": True,
-        "channel_name": "welcome",
+        "channel_name": "🙏┆ᴡᴇʟᴄᴏᴍᴇ",
         "server_name": "Manjummel Boys",
         "line2": "Have A Great Time here ❤️",
         "rules_channel": "#📖┆DISCORD-RULES",
