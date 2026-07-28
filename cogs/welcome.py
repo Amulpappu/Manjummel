@@ -1,6 +1,10 @@
 import discord
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    HAS_PIL = True
+except Exception:
+    HAS_PIL = False
 import io
 import aiohttp
 import json
@@ -199,13 +203,16 @@ class Welcome(commands.Cog):
             f"======= (🔥) ======="
         )
 
-        try:
-            image_buf = await generate_welcome_card_image(member, cfg, member_count)
-            file = discord.File(fp=image_buf, filename="welcome_card.png")
-            await channel.send(content=msg_content, file=file)
-        except Exception as e:
-            print(f"[Welcome Image Error] {e}")
-            await channel.send(content=msg_content)
+        if HAS_PIL:
+            try:
+                image_buf = await generate_welcome_card_image(member, cfg, member_count)
+                file = discord.File(fp=image_buf, filename="welcome_card.png")
+                await channel.send(content=msg_content, file=file)
+                return
+            except Exception as e:
+                print(f"[Welcome Image Error] {e}")
+
+        await channel.send(content=msg_content)
 
     @commands.command(name="testwelcome")
     @commands.has_permissions(administrator=True)
