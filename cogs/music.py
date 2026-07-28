@@ -136,19 +136,28 @@ def extract_stream_url(data: dict):
         if valid:
             data = valid[0]
 
+    # Direct URL
     url = data.get('url')
     if url and url.startswith("http"):
         return url, data
 
     formats = data.get('formats', [])
-    audio_only = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('url', '').startswith("http")]
+
+    # Priority 1: Audio-only formats (acodec != 'none' and vcodec == 'none')
+    audio_only = [f for f in formats if f.get('acodec') and f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('url', '').startswith("http")]
     if audio_only:
         audio_only.sort(key=lambda f: f.get('tbr') or f.get('abr') or 0, reverse=True)
         return audio_only[0]['url'], data
 
-    audio_any = [f for f in formats if f.get('acodec') != 'none' and f.get('url', '').startswith("http")]
+    # Priority 2: Any format with audio (acodec != 'none', e.g. combined MP4/AAC itag 18)
+    audio_any = [f for f in formats if f.get('acodec') and f.get('acodec') != 'none' and f.get('url', '').startswith("http")]
     if audio_any:
         return audio_any[0]['url'], data
+
+    # Priority 3: Fallback to any format containing a valid HTTP stream URL
+    any_stream = [f for f in formats if f.get('url', '').startswith("http")]
+    if any_stream:
+        return any_stream[0]['url'], data
 
     return None, data
 
