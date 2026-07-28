@@ -146,24 +146,40 @@ def api_update_welcome():
 
 @app.route("/api/welcome/test", methods=["POST"])
 def api_test_welcome():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    if not bot.loop or not bot.is_ready():
+        return jsonify({"success": False, "message": "Bot is starting up. Please wait a few seconds and try again."})
 
     async def trigger_test():
         welcome_cog = bot.get_cog("Welcome")
-        if welcome_cog and bot.guilds:
-            guild = bot.guilds[0]
-            channel = welcome_cog.get_welcome_channel(guild)
-            if channel and guild.members:
-                await welcome_cog.send_welcome_message(channel, guild.members[0])
-                return True
-        return False
+        if not welcome_cog:
+            return False, "Welcome module is not loaded."
 
-    success = loop.run_until_complete(trigger_test())
-    loop.close()
-    if success:
-        return jsonify({"success": True, "message": "Test welcome card sent to Discord!"})
-    return jsonify({"success": False, "message": "Failed to send test welcome card."})
+        if not bot.guilds:
+            return False, "Bot is not connected to any server."
+
+        guild = bot.guilds[0]
+        channel = welcome_cog.get_welcome_channel(guild)
+        if not channel:
+            return False, "Welcome channel not found."
+
+        member = guild.me
+        if guild.members:
+            non_bots = [m for m in guild.members if not m.bot]
+            if non_bots:
+                member = non_bots[0]
+            else:
+                member = guild.members[0]
+
+        await welcome_cog.send_welcome_message(channel, member)
+        return True, f"Test welcome card sent to #{channel.name}!"
+
+    try:
+        future = asyncio.run_coroutine_threadsafe(trigger_test(), bot.loop)
+        success, message = future.result(timeout=10)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logger.error(f"[API Test Welcome Error] {e}")
+        return jsonify({"success": False, "message": f"Error sending test card: {e}"})
 
 def run_web_server():
     port = int(os.environ.get("PORT", 5000))

@@ -121,13 +121,19 @@ class Welcome(commands.Cog):
         self.config_data = load_welcome_config()
 
     def get_welcome_channel(self, guild: discord.Guild):
-        """Finds channel matching welcome_config channel name or #welcome / #🙏┆ᴡᴇʟᴄᴏᴍᴇ."""
-        target_name = self.config_data.get("channel_name", "welcome").lower().replace("🙏┆", "").replace("⚡┆", "")
+        """Finds channel matching welcome_config channel name or #welcome / system channel."""
+        cfg = load_welcome_config()
+        target_name = cfg.get("channel_name", "welcome").lower()
+
         for channel in guild.text_channels:
-            name_clean = channel.name.lower().replace("🙏┆", "").replace("⚡┆", "").replace("-", "_")
-            if target_name in name_clean or "welcome" in name_clean or "welcom" in name_clean:
+            if target_name in channel.name.lower() or "welcome" in channel.name.lower() or "welcom" in channel.name.lower():
                 return channel
-        return guild.system_channel
+
+        if guild.system_channel:
+            return guild.system_channel
+        if guild.text_channels:
+            return guild.text_channels[0]
+        return None
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
