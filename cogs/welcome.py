@@ -39,6 +39,35 @@ def save_welcome_config(data):
     with open(WELCOME_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
+FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "font.ttf")
+
+def get_font(size: int):
+    """Loads bundled font.ttf or system truetype font at requested size."""
+    if HAS_PIL:
+        if os.path.exists(FONT_PATH):
+            try:
+                return ImageFont.truetype(FONT_PATH, size)
+            except Exception:
+                pass
+
+        font_paths = [
+            "arial.ttf",
+            "DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+        ]
+        for path in font_paths:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                pass
+
+        try:
+            return ImageFont.load_default(size=size)
+        except Exception:
+            return ImageFont.load_default()
+    return None
+
 def hex_to_rgb(hex_str: str, default=(15, 23, 42)):
     hex_clean = hex_str.lstrip("#")
     if len(hex_clean) == 6:
@@ -91,13 +120,10 @@ async def generate_welcome_card_image(member: discord.Member, config_data: dict,
     av_y = 50
     canvas.paste(avatar, (av_x, av_y), mask)
 
-    # Fonts
-    try:
-        font_large = ImageFont.truetype("arial.ttf", 52)
-        font_name = ImageFont.truetype("arial.ttf", 36)
-        font_sub = ImageFont.truetype("arial.ttf", 26)
-    except Exception:
-        font_large = font_name = font_sub = ImageFont.load_default()
+    # Fonts using bundled font.ttf or system fallback
+    font_large = get_font(56)
+    font_name = get_font(38)
+    font_sub = get_font(28)
 
     # Draw WELCOME title
     title_text = config_data.get("welcome_title", "WELCOME").upper()
