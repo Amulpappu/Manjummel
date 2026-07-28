@@ -178,54 +178,40 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_event_loop()
         cleaned_url = clean_youtube_url(url)
         data = None
+        stream_url = None
 
-        # Pass 1: Direct extraction
-        try:
-            target_url = cleaned_url if (cleaned_url.startswith("ytsearch:") or "youtube.com" in cleaned_url or "youtu.be" in cleaned_url) else f"ytsearch:{cleaned_url}"
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
-        except Exception as e:
-            print(f"[YTDL Direct Error] {e}")
-
-        stream_url, item_data = extract_stream_url(data)
-
-        # Pass 2: Fallback via title search if stream URL missing
-        if not stream_url:
-            print("[YTDL Stream Missing] Direct extraction yielded no stream URL. Attempting oEmbed + ytsearch1 fallback...")
+        # Strategy 1: For YouTube links, fetch title via oEmbed and search via ytsearch1:
+        if "youtube.com" in cleaned_url or "youtu.be" in cleaned_url:
             try:
                 fetched_title = await fetch_video_title_oembed(cleaned_url)
                 search_term = fetched_title if fetched_title else cleaned_url
-                search_query = f"ytsearch1:{search_term}"
+                query = f"ytsearch1:{search_term}"
+                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=not stream))
+                stream_url, data = extract_stream_url(data)
+            except Exception as e:
+                print(f"[YTDL oEmbed Search Error] {e}")
 
-                fallback_opts = {
-                    'format': 'bestaudio/best',
-                    'quiet': True,
-                    'no_warnings': True,
-                    'default_search': 'ytsearch',
-                    'source_address': '0.0.0.0',
-                    'extractor_args': {
-                        'youtube': {
-                            'player_client': ['mweb', 'android', 'ios', 'tv_embedded']
-                        }
-                    }
-                }
-                fallback_ytdl = yt_dlp.YoutubeDL(fallback_opts)
-                data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(search_query, download=not stream))
-                stream_url, item_data = extract_stream_url(data)
-            except Exception as ex:
-                print(f"[YTDL Fallback Error] {ex}")
+        # Strategy 2: Direct extraction fallback if not YouTube link or if Strategy 1 failed
+        if not stream_url:
+            try:
+                target_url = cleaned_url if (cleaned_url.startswith("ytsearch:") or "youtube.com" in cleaned_url or "youtu.be" in cleaned_url) else f"ytsearch:{cleaned_url}"
+                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
+                stream_url, data = extract_stream_url(data)
+            except Exception as e:
+                print(f"[YTDL Direct Extraction Error] {e}")
 
-        # Pass 3: Last-ditch search if link failed
-        if not stream_url and ("youtube.com" in cleaned_url or "youtu.be" in cleaned_url):
+        # Strategy 3: Last-resort search
+        if not stream_url:
             try:
                 data = await loop.run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch1:{cleaned_url}", download=not stream))
-                stream_url, item_data = extract_stream_url(data)
+                stream_url, data = extract_stream_url(data)
             except Exception:
                 pass
 
-        if not stream_url or not item_data:
+        if not stream_url or not data:
             raise Exception("Could not extract video stream from YouTube.")
 
-        return cls(discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS), data=item_data, requester=requester)
+        return cls(discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS), data=data, requester=requester)
 
 class MusicControlView(discord.ui.View):
     """Flavia-style Interactive Music Control Panel buttons."""
