@@ -49,17 +49,16 @@ def hex_to_rgb(hex_str: str, default=(15, 23, 42)):
     return default
 
 async def generate_welcome_card_image(member: discord.Member, config_data: dict, member_count: int) -> io.BytesIO:
-    """Generates Koya-style Welcome Image Card with user avatar and dynamic text."""
+    """Generates Koya-style Welcome Image Card with transparent background, no outer box border, and small thin avatar ring."""
     width, height = 1000, 500
-    bg_rgb = hex_to_rgb(config_data.get("bg_color", "#0f172a"), (15, 23, 42))
     title_rgb = hex_to_rgb(config_data.get("title_color", "#00e678"), (0, 230, 120))
     name_rgb = hex_to_rgb(config_data.get("name_color", "#ff2d55"), (255, 45, 85))
 
-    canvas = Image.new("RGBA", (width, height), (*bg_rgb, 255))
+    # Transparent canvas so card floats seamlessly over Discord UI
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas)
 
-    # Cyan/emerald glowing outer border
-    draw.rectangle([10, 10, width - 10, height - 10], outline=(0, 255, 170, 255), width=4)
+    # NO outer rectangular box border
 
     # Fetch avatar
     avatar_url = member.display_avatar.url
@@ -70,9 +69,9 @@ async def generate_welcome_card_image(member: discord.Member, config_data: dict,
                     avatar_bytes = await resp.read()
                     avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
                 else:
-                    avatar = Image.new("RGBA", (180, 180), (0, 255, 170, 255))
+                    avatar = Image.new("RGBA", (180, 180), (*title_rgb, 255))
         except Exception:
-            avatar = Image.new("RGBA", (180, 180), (0, 255, 170, 255))
+            avatar = Image.new("RGBA", (180, 180), (*title_rgb, 255))
 
     # Resize avatar to circular 180x180
     av_size = 180
@@ -81,15 +80,15 @@ async def generate_welcome_card_image(member: discord.Member, config_data: dict,
     draw_mask = ImageDraw.Draw(mask)
     draw_mask.ellipse((0, 0, av_size, av_size), fill=255)
 
-    # Avatar ring glow
-    ring_size = 200
+    # Small thin avatar border ring (width=3)
+    ring_size = 190
     ring_x = (width - ring_size) // 2
-    ring_y = 50
-    draw.ellipse([ring_x, ring_y, ring_x + ring_size, ring_y + ring_size], outline=(0, 255, 170, 255), width=6)
+    ring_y = 45
+    draw.ellipse([ring_x, ring_y, ring_x + ring_size, ring_y + ring_size], outline=(*title_rgb, 255), width=3)
 
-    # Paste circular avatar
+    # Paste circular avatar in center
     av_x = (width - av_size) // 2
-    av_y = 60
+    av_y = 50
     canvas.paste(avatar, (av_x, av_y), mask)
 
     # Fonts
