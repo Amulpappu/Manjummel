@@ -291,6 +291,28 @@ class MusicControlView(discord.ui.View):
         embed = discord.Embed(title="🎶 Current Music Queue", description=description, color=discord.Color.purple())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @discord.ui.button(label="Favorite", style=discord.ButtonStyle.secondary, emoji="⭐")
+    async def favorite_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild_id = interaction.guild_id
+        current = self.cog.current_track.get(guild_id)
+        if not current:
+            return await interaction.response.send_message("❌ No track currently playing to add to favorites.", ephemeral=True)
+        
+        user_id_str = str(interaction.user.id)
+        favs = self.cog.load_favorites()
+        if user_id_str not in favs:
+            favs[user_id_str] = []
+
+        track_title = current.get("title", "Unknown Track")
+        track_url = current.get("url", "")
+        
+        if any(item.get("url") == track_url for item in favs[user_id_str]):
+            return await interaction.response.send_message(f"⭐ **{track_title}** is already in your favorites!", ephemeral=True)
+
+        favs[user_id_str].append({"title": track_title, "url": track_url})
+        self.cog.save_favorites(favs)
+        await interaction.response.send_message(f"⭐ Saved **{track_title}** to your favorites!", ephemeral=True)
+
 class Music(commands.Cog):
     """Flavia-style Music Cog with Interactive Buttons & Queue Management."""
 
@@ -305,12 +327,34 @@ class Music(commands.Cog):
             self.queues[guild_id] = []
         return self.queues[guild_id]
 
+    def load_favorites(self):
+        fav_file = os.path.join(os.path.dirname(__file__), "favorites.json")
+        if os.path.exists(fav_file):
+            try:
+                with open(fav_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def save_favorites(self, favs_data):
+        fav_file = os.path.join(os.path.dirname(__file__), "favorites.json")
+        try:
+            with open(fav_file, "w", encoding="utf-8") as f:
+                json.dump(favs_data, f, indent=4)
+        except Exception:
+            pass
+
     def format_duration(self, seconds):
         if not seconds:
             return "Live Stream 🔴"
-        m, s = divmod(seconds, 60)
-        h, m = divmod(m, 60)
-        return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+        try:
+            sec = int(float(seconds))
+            m, s = divmod(sec, 60)
+            h, m = divmod(m, 60)
+            return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+        except Exception:
+            return "Live Stream 🔴"
 
     async def play_next(self, ctx):
         guild_id = ctx.guild.id
@@ -471,6 +515,18 @@ class Music(commands.Cog):
             description += f"\n\n*...and {len(queue)-10} more tracks.*"
 
         embed = discord.Embed(title="🎶 Current Music Queue", description=description, color=discord.Color.purple())
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="favorites", aliases=["favs"], description="Displays your saved favorite tracks.")
+    async def favorites_command(self, ctx: commands.Context):
+        """Displays user's saved favorite tracks."""
+        favs = self.load_favorites()
+        user_favs = favs.get(str(ctx.author.id), [])
+        if not user_favs:
+            return await ctx.send("⭐ You have no saved favorite tracks yet. Click ⭐ **Favorite** on any now playing track!")
+
+        desc = "\n".join([f"**{i+1}.** [{item['title']}]({item['url']})" for i, item in enumerate(user_favs[:15])])
+        embed = discord.Embed(title=f"⭐ Favorite Tracks for {ctx.author.display_name}", description=desc, color=discord.Color.gold())
         await ctx.send(embed=embed)
 
 async def setup(bot):
