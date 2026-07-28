@@ -89,7 +89,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['android_vr', 'ios', 'android', 'web']
+            'player_client': ['tv_embedded', 'android_vr', 'ios', 'android', 'web']
         }
     }
 }
@@ -100,6 +100,22 @@ FFMPEG_OPTIONS = {
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+
+async def fetch_video_title_oembed(url: str) -> str:
+    """Fetches video title via YouTube oEmbed API for DRM search fallback."""
+    oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(oembed_url, headers=headers, timeout=5) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data.get("title", "")
+    except Exception:
+        pass
+    return ""
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, requester=None, volume=0.5):
@@ -122,19 +138,14 @@ class YTDLSource(discord.PCMVolumeTransformer):
             target_url = url if (url.startswith("ytsearch:") or "youtube.com" in url or "youtu.be" in url) else f"ytsearch:{url}"
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
         except Exception as e:
-            print(f"[YTDL Direct Error] {e}. Trying search fallback...")
+            print(f"[YTDL Direct Error] {e}. Trying oEmbed & search fallback...")
 
-        if not data:
+        if not data or ('entries' in data and not data['entries']):
             try:
-                search_query = url
-                if "youtube.com/watch" in url and "v=" in url:
-                    video_id = url.split("v=")[-1].split("&")[0]
-                    search_query = f"ytsearch:{video_id}"
-                elif "youtu.be/" in url:
-                    video_id = url.split("youtu.be/")[-1].split("?")[0]
-                    search_query = f"ytsearch:{video_id}"
-                elif not search_query.startswith("ytsearch:"):
-                    search_query = f"ytsearch:{url}"
+                # Fetch video title via oEmbed API to bypass DRM blocks on direct URLs
+                fetched_title = await fetch_video_title_oembed(url) if ("youtube.com" in url or "youtu.be" in url) else ""
+                
+                search_query = f"ytsearch1:{fetched_title}" if fetched_title else f"ytsearch1:{url}"
 
                 fallback_opts = {
                     'format': 'bestaudio/best',
@@ -144,7 +155,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     'source_address': '0.0.0.0',
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['android_vr', 'ios', 'android', 'web']
+                            'player_client': ['tv_embedded', 'android_vr', 'ios', 'android', 'web']
                         }
                     }
                 }
