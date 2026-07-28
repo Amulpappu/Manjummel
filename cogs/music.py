@@ -89,7 +89,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['mweb', 'android', 'web']
+            'player_client': ['android_vr', 'ios', 'android', 'web']
         }
     }
 }
@@ -130,6 +130,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 if "youtube.com/watch" in url and "v=" in url:
                     video_id = url.split("v=")[-1].split("&")[0]
                     search_query = f"ytsearch:{video_id}"
+                elif "youtu.be/" in url:
+                    video_id = url.split("youtu.be/")[-1].split("?")[0]
+                    search_query = f"ytsearch:{video_id}"
                 elif not search_query.startswith("ytsearch:"):
                     search_query = f"ytsearch:{url}"
 
@@ -141,7 +144,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     'source_address': '0.0.0.0',
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['mweb', 'android', 'web']
+                            'player_client': ['android_vr', 'ios', 'android', 'web']
                         }
                     }
                 }
