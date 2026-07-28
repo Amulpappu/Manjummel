@@ -142,18 +142,36 @@ class Welcome(commands.Cog):
         self.config_data = load_welcome_config()
 
     def get_welcome_channel(self, guild: discord.Guild):
-        """Finds channel matching welcome_config channel name or #welcome / #🙏┆ᴡᴇʟᴄᴏᴍᴇ."""
+        """Finds channel matching welcome_config channel name or #🙏┆ᴡᴇʟᴄᴏᴍᴇ, prioritizing exact welcome channel over #welcome-and-rules."""
         cfg = load_welcome_config()
-        target_raw = cfg.get("channel_name", "welcome")
+        target_raw = cfg.get("channel_name", "welcome").strip()
         target_norm = normalize_unicode_text(target_raw)
 
-        for channel in guild.text_channels:
-            ch_raw = channel.name
-            ch_norm = normalize_unicode_text(ch_raw)
+        def clean_ch_name(name: str) -> str:
+            norm = normalize_unicode_text(name)
+            for prefix in ["🙏┆", "⚡┆", "┆", "🙏", "⚡"]:
+                norm = norm.replace(prefix, "")
+            return norm.strip("-_ ")
 
-            if target_raw.lower() in ch_raw.lower() or target_norm in ch_norm or "welcome" in ch_norm or "welcom" in ch_norm:
+        # Pass 1: Exact raw name match (e.g. "🙏┆ᴡᴇʟᴄᴏᴍᴇ")
+        for channel in guild.text_channels:
+            if channel.name == target_raw or channel.name.lower() == target_raw.lower():
                 return channel
 
+        # Pass 2: Clean normalized exact match == "welcome" (matches #🙏┆ᴡᴇʟᴄᴏᴍᴇ, #welcome)
+        for channel in guild.text_channels:
+            cleaned = clean_ch_name(channel.name)
+            if cleaned == "welcome" or cleaned == "welcom":
+                return channel
+
+        # Pass 3: Channel containing "welcome" BUT excluding compound rules/logs channels (e.g. exclude #welcome-and-rules)
+        for channel in guild.text_channels:
+            ch_norm = normalize_unicode_text(channel.name)
+            if "welcome" in ch_norm or "welcom" in ch_norm:
+                if not any(ex in ch_norm for ex in ["rule", "rules", "log", "logs", "info", "notice"]):
+                    return channel
+
+        # Pass 4: Fallback to system_channel or first text channel
         if guild.system_channel:
             return guild.system_channel
         if guild.text_channels:
