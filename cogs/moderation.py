@@ -200,5 +200,17 @@ class Moderation(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.hybrid_command(name="rescan", aliases=["syncsheets"], description="Forces an immediate live re-scan & sync of Google Sheets data.")
+    @commands.has_permissions(administrator=True)
+    async def rescan_command(self, ctx: commands.Context):
+        """Forces an immediate live re-scan and cache sync of Google Sheets data."""
+        await ctx.send("⚡ **Re-scan initiated!** Synchronizing Google Sheets data live...")
+        try:
+            import sheets
+            sheets.force_refresh_all()
+            await ctx.send("🟢 **Re-scan Complete!** All manual edits and sheet totals are now live on the Web Dashboard.")
+        except Exception as e:
+            await ctx.send(f"⚠️ Re-scan notice: `{e}`")
+
 async def setup(bot):
     await bot.add_cog(Moderation(bot))
