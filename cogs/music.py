@@ -102,9 +102,18 @@ FFMPEG_OPTIONS = {
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
+def clean_youtube_url(url: str) -> str:
+    """Cleans YouTube URLs by extracting 11-char video ID to strip extra playlist/radio parameters."""
+    if "youtube.com" in url or "youtu.be" in url:
+        match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11})', url)
+        if match:
+            return f"https://www.youtube.com/watch?v={match.group(1)}"
+    return url
+
 async def fetch_video_title_oembed(url: str) -> str:
     """Fetches video title via YouTube oEmbed API for DRM search fallback."""
-    oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
+    clean_url = clean_youtube_url(url)
+    oembed_url = f"https://www.youtube.com/oembed?url={clean_url}&format=json"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
@@ -134,19 +143,19 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def from_url(cls, url, *, loop=None, stream=True, requester=None):
         loop = loop or asyncio.get_event_loop()
         data = None
+        cleaned_url = clean_youtube_url(url)
 
         try:
-            target_url = url if (url.startswith("ytsearch:") or "youtube.com" in url or "youtu.be" in url) else f"ytsearch:{url}"
+            target_url = cleaned_url if (cleaned_url.startswith("ytsearch:") or "youtube.com" in cleaned_url or "youtu.be" in cleaned_url) else f"ytsearch:{cleaned_url}"
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
         except Exception as e:
             print(f"[YTDL Direct Error] {e}. Trying oEmbed & search fallback...")
 
         if not data or ('entries' in data and not data['entries']):
             try:
-                # Fetch video title via oEmbed API to bypass DRM blocks on direct URLs
-                fetched_title = await fetch_video_title_oembed(url) if ("youtube.com" in url or "youtu.be" in url) else ""
-                
-                search_query = f"ytsearch1:{fetched_title}" if fetched_title else f"ytsearch1:{url}"
+                fetched_title = await fetch_video_title_oembed(cleaned_url)
+                search_term = fetched_title if fetched_title else cleaned_url
+                search_query = f"ytsearch1:{search_term}"
 
                 fallback_opts = {
                     'format': 'bestaudio/best',
@@ -156,7 +165,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     'source_address': '0.0.0.0',
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['tv_embedded', 'android_vr', 'ios', 'android', 'web']
+                            'player_client': ['mweb', 'android', 'ios', 'tv_embedded', 'web']
                         }
                     }
                 }
@@ -336,7 +345,7 @@ class Music(commands.Cog):
 
         guild_id = ctx.guild.id
         queue = self.get_queue(guild_id)
-        search = search.strip("<>")
+        search = clean_youtube_url(search.strip("<>"))
 
         # ── Spotify Link Support ───────────────────────────
         if "spotify.com" in search.lower():
