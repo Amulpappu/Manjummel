@@ -97,5 +97,59 @@ class General(commands.Cog):
         except discord.Forbidden:
             await ctx.send("❌ I do not have permission to remove that role.")
 
+    @commands.hybrid_command(name="avatar", aliases=["av"], description="Displays a user's avatar image.")
+    @app_commands.describe(user="Optional user to view avatar for")
+    async def avatar(self, ctx: commands.Context, user: discord.User = None):
+        """Displays the avatar of a specified user or yourself."""
+        target = user or ctx.author
+        avatar_url = target.display_avatar.url
+
+        embed = discord.Embed(
+            title=f"🖼️ Avatar for {target.display_name}",
+            color=target.accent_color or discord.Color.purple()
+        )
+        embed.set_image(url=avatar_url)
+        embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="🔗 Open High-Res Avatar", url=avatar_url, style=discord.ButtonStyle.link))
+
+        await ctx.send(embed=embed, view=view)
+
+    @commands.hybrid_command(name="banner", description="Displays a user's profile banner image.")
+    @app_commands.describe(user="Optional user to view banner for")
+    async def banner(self, ctx: commands.Context, user: discord.User = None):
+        """Displays the profile banner of a specified user or yourself."""
+        target = user or ctx.author
+
+        try:
+            full_user = await self.bot.fetch_user(target.id)
+        except Exception:
+            full_user = target
+
+        if full_user.banner:
+            banner_url = full_user.banner.url
+            embed = discord.Embed(
+                title=f"🚩 Profile Banner for {full_user.display_name}",
+                color=full_user.accent_color or discord.Color.purple()
+            )
+            embed.set_image(url=banner_url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+
+            view = discord.ui.View()
+            view.add_item(discord.ui.Button(label="🔗 Open High-Res Banner", url=banner_url, style=discord.ButtonStyle.link))
+
+            await ctx.send(embed=embed, view=view)
+        else:
+            embed = discord.Embed(
+                title=f"🚩 Profile Banner for {full_user.display_name}",
+                description=f"**{full_user.display_name}** does not have a custom profile banner set.",
+                color=full_user.accent_color or discord.Color.dark_gray()
+            )
+            if full_user.accent_color:
+                embed.add_field(name="Accent Color", value=f"`{full_user.accent_color}`", inline=True)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+
 async def setup(bot):
     await bot.add_cog(General(bot))
