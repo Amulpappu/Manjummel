@@ -151,5 +151,96 @@ class General(commands.Cog):
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
             await ctx.send(embed=embed)
 
+    @commands.hybrid_command(name="flames", description="Calculates the FLAMES relationship status between two users.")
+    @app_commands.describe(user1="First user", user2="Second user")
+    async def flames(self, ctx: commands.Context, user1: discord.User, user2: discord.User):
+        """Calculates FLAMES relationship test between two users."""
+        name1 = list(user1.display_name.lower().replace(" ", ""))
+        name2 = list(user2.display_name.lower().replace(" ", ""))
+
+        # Cancel out common characters
+        for char in name1[:]:
+            if char in name2:
+                name1.remove(char)
+                name2.remove(char)
+
+        total_count = len(name1) + len(name2)
+
+        flames_dict = {
+            "F": ("Friends 🤝", "Best friends forever! A bond built on trust and fun."),
+            "L": ("Lovers 💕", "Passionate lovers! Sparks are flying everywhere!"),
+            "A": ("Affection 🥰", "Sweet affection! Deep emotional care and warm feelings."),
+            "M": ("Marriage 💍", "Wedding bells ringing! Destined for lifelong marriage!"),
+            "E": ("Enemies ⚔️", "Fierce rivals! Watch out for arguments and friendly battles."),
+            "S": ("Siblings 👫", "Brother/Sister bond! Protective, caring, and inseparable.")
+        }
+        flames_list = ["F", "L", "A", "M", "E", "S"]
+
+        if total_count > 0:
+            index = 0
+            while len(flames_list) > 1:
+                index = (index + total_count - 1) % len(flames_list)
+                flames_list.pop(index)
+            result_code = flames_list[0]
+        else:
+            result_code = "L"
+
+        status, desc = flames_dict[result_code]
+
+        embed = discord.Embed(
+            title="🔥 FLAMES Relationship Calculator",
+            description=f"Testing compatibility between **{user1.display_name}** & **{user2.display_name}**...\n\n"
+                        f"✨ **FLAMES Result:** `{status}`\n"
+                        f"📝 {desc}",
+            color=discord.Color.magenta()
+        )
+        embed.set_thumbnail(url=user1.display_avatar.url)
+        embed.set_footer(text=f"FLAMES Count: {total_count} • Tested by {ctx.author.display_name}")
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="love", description="Calculates the love compatibility percentage between two users.")
+    @app_commands.describe(user1="First partner", user2="Second partner or user")
+    async def love_calc(self, ctx: commands.Context, user1: discord.User, user2: discord.User = None):
+        """Calculates love compatibility percentage between two users."""
+        partner1 = user1
+        partner2 = user2 or ctx.author
+
+        if partner1.id == partner2.id:
+            score = 100
+        else:
+            sorted_ids = sorted([partner1.id, partner2.id])
+            score = (sorted_ids[0] * 7 + sorted_ids[1] * 13 + 77) % 101
+
+        filled_blocks = int(score / 10)
+        bar = "█" * filled_blocks + "░" * (10 - filled_blocks)
+
+        if score >= 90:
+            message = "💖 **Perfect Match!** True soulmates destined for eternity!"
+            color = discord.Color.red()
+        elif score >= 75:
+            message = "💕 **High Compatibility!** Love is in the air, sparks flying!"
+            color = discord.Color.magenta()
+        elif score >= 50:
+            message = "🥰 **Good Match!** Great potential for a sweet relationship!"
+            color = discord.Color.gold()
+        elif score >= 30:
+            message = "⚡ **Sparks Flying!** Needs a little effort, but has potential!"
+            color = discord.Color.orange()
+        else:
+            message = "💔 **Low Compatibility...** Best to stay great best friends!"
+            color = discord.Color.dark_grey()
+
+        embed = discord.Embed(
+            title="💘 Love Compatibility Calculator",
+            description=f"**{partner1.display_name}** ❤️ **{partner2.display_name}**\n\n"
+                        f"**Love Score:** `{score}%`\n"
+                        f"`[{bar}]`\n\n"
+                        f"{message}",
+            color=color
+        )
+        embed.set_thumbnail(url=partner1.display_avatar.url)
+        embed.set_footer(text=f"Calculated by {ctx.author.display_name}")
+        await ctx.send(embed=embed)
+
 async def setup(bot):
     await bot.add_cog(General(bot))
