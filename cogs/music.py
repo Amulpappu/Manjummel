@@ -127,6 +127,31 @@ async def fetch_video_title_oembed(url: str) -> str:
         pass
     return ""
 
+def extract_stream_url(data: dict):
+    """Extracts a valid direct HTTP audio stream URL and item dict from yt_dlp data dict."""
+    if not data:
+        return None, None
+    if 'entries' in data and data['entries']:
+        valid = [e for e in data['entries'] if e]
+        if valid:
+            data = valid[0]
+
+    url = data.get('url')
+    if url and url.startswith("http"):
+        return url, data
+
+    formats = data.get('formats', [])
+    audio_only = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('url', '').startswith("http")]
+    if audio_only:
+        audio_only.sort(key=lambda f: f.get('tbr') or f.get('abr') or 0, reverse=True)
+        return audio_only[0]['url'], data
+
+    audio_any = [f for f in formats if f.get('acodec') != 'none' and f.get('url', '').startswith("http")]
+    if audio_any:
+        return audio_any[0]['url'], data
+
+    return None, data
+
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, requester=None, volume=0.5):
         super().__init__(source, volume)
@@ -142,16 +167,21 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=True, requester=None):
         loop = loop or asyncio.get_event_loop()
-        data = None
         cleaned_url = clean_youtube_url(url)
+        data = None
 
+        # Pass 1: Direct extraction
         try:
             target_url = cleaned_url if (cleaned_url.startswith("ytsearch:") or "youtube.com" in cleaned_url or "youtu.be" in cleaned_url) else f"ytsearch:{cleaned_url}"
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(target_url, download=not stream))
         except Exception as e:
-            print(f"[YTDL Direct Error] {e}. Trying oEmbed & search fallback...")
+            print(f"[YTDL Direct Error] {e}")
 
-        if not data or ('entries' in data and not data['entries']):
+        stream_url, item_data = extract_stream_url(data)
+
+        # Pass 2: Fallback via title search if stream URL missing
+        if not stream_url:
+            print("[YTDL Stream Missing] Direct extraction yielded no stream URL. Attempting oEmbed + ytsearch1 fallback...")
             try:
                 fetched_title = await fetch_video_title_oembed(cleaned_url)
                 search_term = fetched_title if fetched_title else cleaned_url
@@ -165,36 +195,28 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     'source_address': '0.0.0.0',
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['mweb', 'android', 'ios', 'tv_embedded', 'web']
+                            'player_client': ['mweb', 'android', 'ios', 'tv_embedded']
                         }
                     }
                 }
                 fallback_ytdl = yt_dlp.YoutubeDL(fallback_opts)
                 data = await loop.run_in_executor(None, lambda: fallback_ytdl.extract_info(search_query, download=not stream))
+                stream_url, item_data = extract_stream_url(data)
             except Exception as ex:
                 print(f"[YTDL Fallback Error] {ex}")
 
-        if not data:
+        # Pass 3: Last-ditch search if link failed
+        if not stream_url and ("youtube.com" in cleaned_url or "youtu.be" in cleaned_url):
+            try:
+                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch1:{cleaned_url}", download=not stream))
+                stream_url, item_data = extract_stream_url(data)
+            except Exception:
+                pass
+
+        if not stream_url or not item_data:
             raise Exception("Could not extract video stream from YouTube.")
 
-        if 'entries' in data and data['entries']:
-            valid_entries = [e for e in data['entries'] if e and (e.get('url') or e.get('webpage_url'))]
-            if valid_entries:
-                data = valid_entries[0]
-
-        filename = data.get('url')
-        if not filename or not filename.startswith("http"):
-            formats = data.get('formats', [])
-            audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('url')]
-            if audio_formats:
-                filename = audio_formats[0]['url']
-            else:
-                filename = data.get('webpage_url')
-
-        if not filename or not filename.startswith("http"):
-            raise Exception("No playable audio stream found for this track.")
-
-        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data, requester=requester)
+        return cls(discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS), data=item_data, requester=requester)
 
 class MusicControlView(discord.ui.View):
     """Flavia-style Interactive Music Control Panel buttons."""
