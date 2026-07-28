@@ -200,20 +200,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         search_clean_title = clean_song_title(raw_song_title)
         search_query_title = search_clean_title if search_clean_title else raw_song_title
 
-        # Provider 1: Flavia Engine (SoundCloud High-Speed Cloud Stream)
+        # Provider 1: YouTube Clean Search Engine (Primary for Full-Length Streams on Cloud IPs)
         if search_query_title:
-            try:
-                sc_opts = {'format': 'bestaudio/best', 'quiet': True, 'no_warnings': True}
-                ytdl_sc = yt_dlp.YoutubeDL(sc_opts)
-                sc_data = await loop.run_in_executor(None, lambda: ytdl_sc.extract_info(f"scsearch1:{search_query_title}", download=not stream))
-                stream_url, data = extract_stream_url(sc_data)
-                if stream_url:
-                    print(f"[Flavia Music Engine] Provider 1 (SoundCloud) loaded stream for: {search_query_title}")
-            except Exception as e:
-                print(f"[Flavia Music Engine] Provider 1 Error: {e}")
-
-        # Provider 2: YouTube Search Engine (mweb/android/tv_embedded client with Cleaned Title)
-        if not stream_url:
             try:
                 yt_opts = {
                     'format': 'bestaudio/best',
@@ -226,11 +214,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 yt_data = await loop.run_in_executor(None, lambda: ytdl_yt.extract_info(yt_query, download=not stream))
                 stream_url, data = extract_stream_url(yt_data)
                 if stream_url:
-                    print(f"[Flavia Music Engine] Provider 2 (YouTube Clean Search) loaded stream for: {yt_query}")
+                    print(f"[Flavia Music Engine] Provider 1 (YouTube Clean Search) loaded stream for: {yt_query}")
             except Exception as e:
-                print(f"[Flavia Music Engine] Provider 2 Error: {e}")
+                print(f"[Flavia Music Engine] Provider 1 Error: {e}")
 
-        # Provider 3: YouTube Search Engine (Raw Title Fallback)
+        # Provider 2: YouTube Search Engine (Raw Title Fallback)
         if not stream_url and raw_song_title:
             try:
                 yt_opts = {
@@ -244,7 +232,19 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 yt_data = await loop.run_in_executor(None, lambda: ytdl_yt.extract_info(yt_query, download=not stream))
                 stream_url, data = extract_stream_url(yt_data)
                 if stream_url:
-                    print(f"[Flavia Music Engine] Provider 3 (YouTube Raw Search) loaded stream for: {yt_query}")
+                    print(f"[Flavia Music Engine] Provider 2 (YouTube Raw Search) loaded stream for: {yt_query}")
+            except Exception as e:
+                print(f"[Flavia Music Engine] Provider 2 Error: {e}")
+
+        # Provider 3: SoundCloud Engine Fallback
+        if not stream_url and search_query_title:
+            try:
+                sc_opts = {'format': 'bestaudio/best', 'quiet': True, 'no_warnings': True}
+                ytdl_sc = yt_dlp.YoutubeDL(sc_opts)
+                sc_data = await loop.run_in_executor(None, lambda: ytdl_sc.extract_info(f"scsearch1:{search_query_title}", download=not stream))
+                stream_url, data = extract_stream_url(sc_data)
+                if stream_url:
+                    print(f"[Flavia Music Engine] Provider 3 (SoundCloud) loaded stream for: {search_query_title}")
             except Exception as e:
                 print(f"[Flavia Music Engine] Provider 3 Error: {e}")
 
@@ -389,6 +389,10 @@ class Music(commands.Cog):
 
     async def play_next(self, ctx):
         guild_id = ctx.guild.id
+        vc = ctx.voice_client
+        if not vc or not vc.is_connected():
+            return
+
         queue = self.get_queue(guild_id)
 
         if self.loop_status.get(guild_id, False) and guild_id in self.current_track:
@@ -400,34 +404,37 @@ class Music(commands.Cog):
             self.current_track.pop(guild_id, None)
             return await ctx.send("🎶 Queue is finished. Disconnecting or waiting for more tracks...")
 
-        async with ctx.typing():
-            try:
-                player = await YTDLSource.from_url(track_info['url'], loop=self.bot.loop, stream=True, requester=track_info.get('requester'))
-                
-                def after_playing(error):
-                    if error:
-                        print(f"Music Playback Error: {error}")
+        try:
+            player = await YTDLSource.from_url(track_info['url'], loop=self.bot.loop, stream=True, requester=track_info.get('requester'))
+            
+            def after_playing(error):
+                if error:
+                    print(f"Music Playback Error: {error}")
+                if vc and vc.is_connected():
                     asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
 
-                ctx.voice_client.play(player, after=after_playing)
+            if vc.is_playing() or vc.is_paused():
+                vc.stop()
 
-                embed = discord.Embed(
-                    title="🎵 NOW PLAYING",
-                    description=f"**[{player.title}]({player.url})**",
-                    color=discord.Color.blue()
-                )
-                if player.thumbnail:
-                    embed.set_thumbnail(url=player.thumbnail)
-                embed.add_field(name="Uploader", value=player.uploader, inline=True)
-                embed.add_field(name="Duration", value=self.format_duration(player.duration), inline=True)
-                if player.requester:
-                    embed.add_field(name="Requested By", value=player.requester.mention, inline=True)
+            vc.play(player, after=after_playing)
 
-                view = MusicControlView(self, ctx)
-                await ctx.send(embed=embed, view=view)
-            except Exception as e:
-                await ctx.send(f"❌ Error loading track `{track_info.get('title')}`: {e}")
-                await self.play_next(ctx)
+            embed = discord.Embed(
+                title="🎵 NOW PLAYING",
+                description=f"**[{player.title}]({player.url})**",
+                color=discord.Color.blue()
+            )
+            if player.thumbnail:
+                embed.set_thumbnail(url=player.thumbnail)
+            embed.add_field(name="Uploader", value=player.uploader, inline=True)
+            embed.add_field(name="Duration", value=self.format_duration(player.duration), inline=True)
+            if player.requester:
+                embed.add_field(name="Requested By", value=player.requester.mention, inline=True)
+
+            view = MusicControlView(self, ctx)
+            await ctx.send(embed=embed, view=view)
+        except Exception as e:
+            print(f"[play_next error] {e}")
+            await ctx.send(f"❌ Error loading track `{track_info.get('title')}`: {e}")
 
     @commands.hybrid_command(name="join", description="Joins your current voice channel.")
     async def join(self, ctx: commands.Context):
